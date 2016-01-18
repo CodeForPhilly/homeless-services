@@ -1,0 +1,19 @@
+{{define "title"}}Resource Awareness Map{{end}}
+{{define "styles"}}{{end}}
+{{define "scripts"}}{{end}}
+{{define "body"}}
+<form id="zipcode">
+  Zipcode:<br>
+  <input type="text" name="search">
+</form>
+<div id="legend">
+  <ul>
+    <img src="static/img/redMarker.png" class="marker"><li>Medical</li>
+    <img src="static/img/blueMarker.png" class="marker"><li>Shelter</li>
+    <img src="static/img/greenMarker.png" class="marker"><li>Legal</li>
+    <img src="static/img/yellowMarker.png" class="marker"><li>Food</li>
+    <br>
+  </ul>
+</div>
+<iframe src="https://www.google.com/maps/d/embed?mid=z5vye49gGXlg.kgJ3JyH9qPBo" width="800" height="600" allowfullscreen></iframe>
+{{end}}
