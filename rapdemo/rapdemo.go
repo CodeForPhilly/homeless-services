@@ -13,10 +13,25 @@ import (
 
 const basePath = "rapdemo"
 
+type resource struct {
+	ID               int    `json:"Id"`
+	Category         string `json:"Category"`
+	OrganizationName string `json:"Organization Name"`
+	Address          string `json:"Address"`
+	ZipCode          string `json:"Zip Code"`
+	Days             string `json:"Days"`
+	TimeOpen         string `json:"Time: Open"`
+	TimeClose        string `json:"Time: Close"`
+	PeopleServed     string `json:"People Served"` //should be an array of type people
+	Description      string `json:"Description"`
+	PhoneNumber      string `json:"Phone Number"`
+}
+
 func init() {
 	//basePath = "rapdemo"
 	fs := http.FileServer(http.Dir(basePath + "/static"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	http.HandleFunc("/auth/", authdemo)
 	http.HandleFunc("/", serveTemplate)
 }
 
