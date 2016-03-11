@@ -1,5 +1,15 @@
-//Trying out this tutorial with google app engine
+//The RAP site is composed of three parts:
+//-static pages - for the public
+//-API - for RESTful CRUD ops on the data
+//-logged in pages - as a web based way access the CRUD ops
+//-an import page for the bulk updates
+
+//The static pages are based on this tutorial
 //http://www.alexedwards.net/blog/serving-static-sites-with-go
+
+//I was thinking of trying siesta (https://github.com/VividCortex/siesta) for the api
+
+//google app engine handles auth fairly well on its own
 
 package rapdemo
 
@@ -13,28 +23,20 @@ import (
 
 const basePath = "rapdemo"
 
-type resource struct {
-	ID               int    `json:"Id"`
-	Category         string `json:"Category"`
-	OrganizationName string `json:"Organization Name"`
-	Address          string `json:"Address"`
-	ZipCode          string `json:"Zip Code"`
-	Days             string `json:"Days"`
-	TimeOpen         string `json:"Time: Open"`
-	TimeClose        string `json:"Time: Close"`
-	PeopleServed     string `json:"People Served"` //should be an array of type people
-	Description      string `json:"Description"`
-	PhoneNumber      string `json:"Phone Number"`
-}
-
 func init() {
 	//basePath = "rapdemo"
 	fs := http.FileServer(http.Dir(basePath + "/static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
-	http.HandleFunc("/auth/", authdemo)
+	http.Handle("/static/", http.StripPrefix("/static", fs))
+	http.HandleFunc("/auth", authdemo)
+
+	//datastore testing
+	http.HandleFunc("/dsdemo", dsdemo)
+
+	//service := siesta.NewService("/api/")
 	http.HandleFunc("/", serveTemplate)
 }
 
+//it would be good for this function to pass a token to the page in case the page has a form (a lot of them will)
 func serveTemplate(w http.ResponseWriter, r *http.Request) {
 	log.Println("serving a non-static request")
 	lp := path.Join(basePath+"/templates", "layout.html")
