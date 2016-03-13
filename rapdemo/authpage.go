@@ -11,18 +11,18 @@ import (
 	"google.golang.org/appengine/user"
 )
 
-func authdemo(w http.ResponseWriter, r *http.Request) {
+func authdemo(w http.ResponseWriter, r *http.Request) *appError {
 	c := appengine.NewContext(r)
 	u := user.Current(c)
 	if u == nil {
 		url, err := user.LoginURL(c, r.URL.String())
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			return &appError{err, "Could not determine LoginURL", http.StatusInternalServerError}
 		}
 		w.Header().Set("Location", url)
 		w.WriteHeader(http.StatusFound)
-		return
+		return nil
 	}
 	fmt.Fprintf(w, "Hello, %v!", u)
+	return nil
 }

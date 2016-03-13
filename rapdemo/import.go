@@ -8,32 +8,12 @@ import (
 	"appengine/datastore"
 	"appengine/user"
 	"encoding/csv"
+	"errors"
 	"io"
 	"log"
 	"net/http"
 	"time"
 )
-
-type resource struct {
-	//ID int
-
-	//display fields
-	Category         string `json:"Category"`
-	OrganizationName string `json:"Organization Name"`
-	Address          string `json:"Address"`
-	ZipCode          string `json:"Zip Code"`
-	Days             string `json:"Days"`
-	TimeOpen         string `json:"Time: Open"`
-	TimeClose        string `json:"Time: Close"`
-	PeopleServed     string `json:"People Served"`
-	Description      string `json:"Description"`
-	PhoneNumber      string `json:"Phone Number"`
-
-	//audit fields
-	LastUpdatedTime time.Time `datastore:",noindex"`
-	LastUpdatedBy   string    `datastore:",noindex"`
-	IsActive        bool
-}
 
 //so... now we need to get the csv file into memory
 //we'll do that by a form submit from a static
@@ -41,63 +21,69 @@ type resource struct {
 //then into datastore
 
 //I need to implement a token on this form
-func dsdemo(w http.ResponseWriter, r *http.Request) {
-	log.Println("method:", r.Method)
+func csvimport(w http.ResponseWriter, r *http.Request) *appError {
+	c := appengine.NewContext(r)
+	c.Debugf("method: ", r.Method)
 
 	if r.Method != "POST" {
-		http.Redirect(w, r, "/index.html?wrongmethod=true", http.StatusFound)
-		return
+		return &appError{
+			errors.New("Unsupported method call to import"),
+			"Imports most be POSTed",
+			http.StatusMethodNotAllowed,
+		}
 	}
-
-	c := appengine.NewContext(r)
 
 	//this block for check the user's credentials should eventually be broken out into a filter
 	u := user.Current(c)
 	if u == nil {
 		url, err := user.LoginURL(c, r.URL.String())
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			return &appError{err, "Could not determine LoginURL", http.StatusInternalServerError}
 		}
 		w.Header().Set("Location", url)
 		w.WriteHeader(http.StatusFound)
-		return
+		return nil
 	}
 
 	//some crappy security so that only a certain person can upload things
 	//we should probably have a users entity in datastore that we manage manually for this kinda thing
 	if u.Email != "test@example.com" {
-		http.Redirect(w, r, "/index.html?wronguser=true", http.StatusFound)
-		return
+		return &appError{
+			errors.New("Illegal import attempted by " + u.Email),
+			"Your user is not allowed to import",
+			http.StatusForbidden,
+		}
 	}
 
 	//r.ParseMultipartForm(1 << 10)
 
 	file, handler, err := r.FormFile("uploadfile")
 	if err != nil {
-		log.Println("error: ", err)
-		return
+		return &appError{err, "Error uploading file", http.StatusInternalServerError}
 	}
 	defer file.Close()
 
 	log.Println(handler.Filename)
 
 	cr := csv.NewReader(file)
+	var res []resource
+	var keys []*datastore.Key
 
 	//at the moment we always insert a new item, this should be an insert or update based on OrganizationName
 	//also need to switch to batch operations with GetMulti and PutMulti
+	//if we get a large enough data set we'll need to implement two loops so that we only batch a certain number of records at a time
 	for {
 		rec, err := cr.Read()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			log.Fatal(err)
+			return &appError{err, "Error reading file", http.StatusInternalServerError}
 		}
 
 		//we may want IDs in there eventually
 		//_, err = strconv.ParseInt(rec[0], 2, 64)
-		res := resource{
+		res = append(res, resource{
 			Category:         rec[1],
 			OrganizationName: rec[2],
 			Address:          rec[3],
@@ -111,19 +97,19 @@ func dsdemo(w http.ResponseWriter, r *http.Request) {
 			LastUpdatedBy:    u.Email,
 			LastUpdatedTime:  time.Now().UTC(),
 			IsActive:         true,
-		}
-
-		dk := datastore.NewKey(c, "RAP", "default_rap", 0, nil)
-
-		key := datastore.NewIncompleteKey(c, "Resource", dk)
-
-		_, err = datastore.Put(c, key, &res)
-		if err != nil {
-			log.Println(err.Error())
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+		})
+		keys = append(keys, datastore.NewIncompleteKey(c, "Resource", nil))
 	}
 
+	_, err = datastore.PutMulti(c, keys, res)
+	if err != nil {
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return &appError{err, "Error updating database", http.StatusInternalServerError}
+	}
+
+	//TODO - invalidate the cache
+
 	http.Redirect(w, r, "/index.html", http.StatusFound)
+	return nil
 }
