@@ -10,6 +10,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 type featurecollection struct {
@@ -26,6 +27,7 @@ type feature struct {
 type geometry struct {
 	Geotype     string    `json:"type"`
 	Coordinates []float64 `json:"coordinates"`
+	Id          string    `json:"id"`
 }
 
 /* we need to format our resources like so
@@ -88,9 +90,11 @@ func resources(w http.ResponseWriter, r *http.Request) *appError {
 				Geometry: &geometry{
 					Geotype: "Point",
 					Coordinates: []float64{
-						res[i].Location.Lat,
 						res[i].Location.Lng,
+						res[i].Location.Lat,
+						0,
 					},
+					Id: strconv.FormatInt(res[i].ID, 10),
 				},
 				Properties: res[i],
 			})

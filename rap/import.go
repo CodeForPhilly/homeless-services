@@ -12,6 +12,7 @@ import (
 	"errors"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"time"
 )
@@ -97,7 +98,12 @@ func csvimport(w http.ResponseWriter, r *http.Request) *appError {
 			LastUpdatedBy:    u.Email,
 			LastUpdatedTime:  time.Now().UTC(),
 			IsActive:         true,
+			Location: appengine.GeoPoint{
+				Lat: 39.9522 - rand.Float64(),
+				Lng: -75.1635 - rand.Float64(),
+			},
 		})
+
 		keys = append(keys, datastore.NewIncompleteKey(c, "Resource", nil))
 	}
 
