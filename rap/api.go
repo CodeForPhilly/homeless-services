@@ -1,8 +1,9 @@
-package rapdemo
+package rap
 
 import (
 	"appengine"
 	"appengine/datastore"
+	//"appengine/memcache"
 	//"fmt"
 	//"github.com/VividCortex/siesta"
 	"encoding/json"
@@ -10,6 +11,22 @@ import (
 	"log"
 	"net/http"
 )
+
+type featurecollection struct {
+	GeoType  string     `json:"type"`
+	Features []*feature `json:"features"`
+}
+
+type feature struct {
+	Geotype    string    `json:"type"`
+	Geometry   *geometry `json:"geometry"`
+	Properties *resource `json:"properties"`
+}
+
+type geometry struct {
+	Geotype     string    `json:"type"`
+	Coordinates []float64 `json:"coordinates"`
+}
 
 /* we need to format our resources like so
 from the geojson spec:
@@ -20,15 +37,26 @@ We need the geojson for easy population of maps, but the regular json would be m
 
 But... that's all future stuff. For now the only thing I am doing is geojson and caching.
 
-{ "type": "GeometryCollection",
-    "geometries": [
-      { "type": "Point",
-        "coordinates": [100.0, 0.0]
+{ "type": "FeatureCollection",
+    "features": [
+      { "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [102.0, 0.5]},
+        "properties": {"prop0": "value0"}
         },
-      { "type": "LineString",
-        "coordinates": [ [101.0, 0.0], [102.0, 1.0] ]
-        }
-    ]
+*/
+
+/*
+I'm thinking we store the data under 4 keys, one for each category
+func get_data(){
+    data = memcache.Get('key')
+    if data != nil{
+        return data
+   }
+    else{
+        data = self.Query_for_data()
+        memcache.Add('key', data, 60)
+        return data
+   }
 }
 */
 
@@ -47,13 +75,35 @@ func resources(w http.ResponseWriter, r *http.Request) *appError {
 			return &appError{err, "Error querying database", http.StatusInternalServerError}
 		}
 
+		f := make([]*feature, 0)
+
+		//keys = keys[:1]
+		//res = res[:1]
+
 		for i, k := range keys {
 			res[i].ID = k.IntID()
+
+			f = append(f, &feature{
+				Geotype: "Feature",
+				Geometry: &geometry{
+					Geotype: "Point",
+					Coordinates: []float64{
+						res[i].Location.Lat,
+						res[i].Location.Lng,
+					},
+				},
+				Properties: res[i],
+			})
+		}
+
+		gc := featurecollection{
+			"FeatureCollection",
+			f,
 		}
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		//err := json.NewEncoder(w).Encode(res)
-		tmp, err := json.Marshal(res)
+		tmp, err := json.Marshal(gc)
 		if err != nil {
 			return &appError{err, "Error creating response", http.StatusInternalServerError}
 		}
@@ -66,11 +116,17 @@ func resources(w http.ResponseWriter, r *http.Request) *appError {
 			"RESTful updates not yet implemented",
 			http.StatusNotImplemented,
 		}
-
 	case "PUT":
 		//auth, validate, update in datastore, invalidate cache
 		return &appError{
 			errors.New("Put not yet implemented"),
+			"RESTful updates not yet implemented",
+			http.StatusNotImplemented,
+		}
+	case "DELETE":
+		//auth, validate, update in datastore, invalidate cache
+		return &appError{
+			errors.New("Delete not yet implemented"),
 			"RESTful updates not yet implemented",
 			http.StatusNotImplemented,
 		}

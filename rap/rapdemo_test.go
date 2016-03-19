@@ -1,4 +1,4 @@
-package rapdemo_test
+package rap_test
 
 import (
 	"google.golang.org/appengine/aetest"

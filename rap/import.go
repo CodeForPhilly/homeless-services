@@ -1,11 +1,12 @@
 //File upload based on https://astaxie.gitbooks.io/build-web-application-with-golang/content/en/04.5.html
 //datastore usage based on https://cloud.google.com/appengine/docs/go/gettingstarted/usingdatastore
 
-package rapdemo
+package rap
 
 import (
 	"appengine"
 	"appengine/datastore"
+	"appengine/memcache"
 	"appengine/user"
 	"encoding/csv"
 	"errors"
@@ -70,7 +71,6 @@ func csvimport(w http.ResponseWriter, r *http.Request) *appError {
 	var keys []*datastore.Key
 
 	//at the moment we always insert a new item, this should be an insert or update based on OrganizationName
-	//also need to switch to batch operations with GetMulti and PutMulti
 	//if we get a large enough data set we'll need to implement two loops so that we only batch a certain number of records at a time
 	for {
 		rec, err := cr.Read()
@@ -108,7 +108,8 @@ func csvimport(w http.ResponseWriter, r *http.Request) *appError {
 		return &appError{err, "Error updating database", http.StatusInternalServerError}
 	}
 
-	//TODO - invalidate the cache
+	// clear the cache
+	memcache.Flush(c)
 
 	http.Redirect(w, r, "/index.html", http.StatusFound)
 	return nil

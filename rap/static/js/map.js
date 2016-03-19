@@ -39,7 +39,33 @@
     //Searches for RAP markers that relate to the search from the form on the page
     //returns all markers when the form is empty
     function searchForResources(){
+	map.data.loadGeoJson("/resources");
+
+	/*
+//manual way of doing the 
+	var httpRequest = new XMLHttpRequest();
+	//httpRequest.setRequestHeader('Accept', 'application/json');
+	httpRequest.onreadystatechange = function(){
+	    if (httpRequest.readyState === XMLHttpRequest.DONE) {
+		// everything is good, the response is received
+		if (httpRequest.status === 200) {
+		    console.log(httpRequest.responseText);
+		    
+		} else {
+		    // there was a problem with the request,
+		    // for example the response may contain a 404 (Not Found)
+		    // or 500 (Internal Server Error) response code
+		    console.log(httpRequest.status);
+		}
+	    } else {
+		// still not ready
+		console.log("loading geojson...");
+	    }
+	};
 	
+	httpRequest.open('GET', '/resources', true);
+	httpRequest.send();
+	*/
     }
 
     function setResourceTypeSelection(){

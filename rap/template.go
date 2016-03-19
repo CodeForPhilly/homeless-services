@@ -1,4 +1,7 @@
-package rapdemo
+//The static pages are based on this tutorial
+//http://www.alexedwards.net/blog/serving-static-sites-with-go
+
+package rap
 
 import (
 	"appengine"

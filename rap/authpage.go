@@ -1,7 +1,7 @@
 //This page implements some authentication based on this tutorial
 //https://cloud.google.com/appengine/docs/go/gettingstarted/usingusers
 //The intention is that eventually, specific users could log in to update the RAP information
-package rapdemo
+package rap
 
 import (
 	"fmt"

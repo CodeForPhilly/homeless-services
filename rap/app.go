@@ -6,7 +6,15 @@
 
 //google app engine handles auth fairly well on its own
 
-package rapdemo
+/* sometime performance, json, and geocode info
+talks.golang.or/2015/json.slide#1
+https://github.com/nf/geocode
+https://github.com/nf/geocode
+talks.golang.org/2013/highperf.slide#1
+github.com/mjibson/appstats
+*/
+
+package rap
 
 import (
 	"net/http"
@@ -15,7 +23,7 @@ import (
 	"appengine"
 )
 
-const basePath = "rapdemo"
+const basePath = "rap"
 
 func init() {
 	//basePath = "rapdemo"
