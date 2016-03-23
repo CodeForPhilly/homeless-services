@@ -46,16 +46,16 @@ type resource struct {
 	ID int64
 
 	//display fields
-	Category         string `json:"Category"`
-	OrganizationName string `json:"Organization Name"`
-	Address          string `json:"Address"`
-	ZipCode          string `json:"Zip Code"`
-	Days             string `json:"Days"`
-	TimeOpen         string `json:"Time: Open"`
-	TimeClose        string `json:"Time: Close"`
-	PeopleServed     string `json:"People Served"`
-	Description      string `json:"Description"`
-	PhoneNumber      string `json:"Phone Number"`
+	Category         string
+	OrganizationName string
+	Address          string
+	ZipCode          string
+	Days             string
+	TimeOpen         string
+	TimeClose        string
+	PeopleServed     string
+	Description      string
+	PhoneNumber      string
 	Location         appengine.GeoPoint
 
 	//audit fields
