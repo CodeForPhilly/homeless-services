@@ -68,10 +68,29 @@
 			var marker = new google.maps.Marker({
 			    position: latLng,
 			    map: map,
+			    icon: {
+				path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+				fillColor: "yellow", //Emergency Food
+				strokeColor: "black",
+				strokeWeight: 1,
+				scale: 4,
+				fillOpacity: 1
+			    },
 			    title: res.properties.ID.toString()
 			});
 
-			marker.color = "blue"
+			switch(res.properties.Category){
+			case "Medical":
+			    marker.icon.fillColor= "red";
+			    break;
+			case "Emergency Shelter":
+			    marker.icon.fillColor= "blue";
+			    break;
+			case "Legal":
+			    marker.icon.fillColor= "green";
+			    break;
+			}
+			    
 
 			var content = '<div>' +
 			    '<h3>'+res.properties.OrganizationName+'</h3>'+
@@ -120,28 +139,8 @@
 	});
     }
     
-    function setResourceTypeSelection(){
-/*
-	var resourceTypes = legend.getElementsByTagName('li');
-	//console.log(resourceTypes);
-	
-	//we will loop over each li and set its background color depend on its checkbox's checked state
-	for(var li of resourceTypes){
-	    var checkbox = li.getElementsByTagName('input')[0];
-	    
-	    if(checkbox.checked){
-		li.getElementsByTagName('label')[0]
-		    .classList.add('selected');
-	    } else{
-		li.getElementsByTagName('label')[0]
-		    .classList.remove('selected');
-	    }
-	}
-*/
-    }
-
-    var legend = document.getElementById('legend');
-    legend.addEventListener('click', setResourceTypeSelection);
+    //var legend = document.getElementById('legend');
+    //legend.addEventListener('click', setResourceTypeSelection);
 
     //initialize
     //setResourceTypeSelection();
