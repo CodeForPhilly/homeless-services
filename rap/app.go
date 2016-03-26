@@ -37,6 +37,9 @@ func init() {
 	//api
 	http.Handle("/resources", appHandler(resources))
 
+	//feedback page submit
+	http.Handle("/feedback", appHandler(feedback))
+
 	//handles the templated but otherwise mostly static html pages
 	http.Handle("/", appHandler(serveTemplate))
 }

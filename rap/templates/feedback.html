@@ -1,0 +1,49 @@
+{{define "title"}}Resource Awareness Map{{end}}
+{{define "styles"}}
+<link href="/static/css/map.css" rel="stylesheet" type="text/css"></link>
+{{end}}
+{{define "scripts"}}
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDNIBav6nqSKEx9iaCF_lkgtSR8HX8cpKI">
+    </script>
+<script type="text/javascript" src="/static/js/map.js"></script>
+{{end}}
+{{define "body"}}
+<form id="uploadform" name="feedbackform" action="/feedback" method="POST">
+  <p>
+    Tell us what went wrong
+  </p>
+  <p>
+    <label for="topic">Topic</label>
+    <br />
+    <select name="topic">
+      <option value="missingInfo">Missing Information</option>
+      <option value="incorrectInfo">Other Incorrect Information</option>
+      <option value="wrongPhone">Wrong Phone</option>
+      <option value="wrongAddress">Wrong Address</option>
+      <option value="orgDoesNotExist">Organization does not exist</option>
+      <option value="wrongHourOfOperation">Wrong hours of operation</option>
+    </select>
+  </p>
+  <p>
+    <label for="challenge">Challenges</label>
+    <br/>
+    <textarea name="challenges"></textarea>
+  </p>
+  <p>
+    <label for="recommendations">Recommendations</label>
+    <br/>
+    <textarea name="recommendations"></textarea>
+  </p>
+  <p>
+    <label for="email">Email (if you want us to contact you about this issue)</label>
+    <br/>
+    <input type="email" name="email"></input>
+  </p>
+  <p>
+    TODO: CAPTCHA
+  </p>
+  <p>
+    <input type="submit" value="Submit" />
+  </p>
+</form>
+{{end}}
