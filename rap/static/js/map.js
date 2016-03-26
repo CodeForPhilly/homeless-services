@@ -73,7 +73,7 @@
 				fillColor: "yellow", //Emergency Food
 				strokeColor: "black",
 				strokeWeight: 1,
-				scale: 4,
+				scale: 8,
 				fillOpacity: 1
 			    },
 			    title: res.properties.ID.toString()

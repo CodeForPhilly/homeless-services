@@ -43,10 +43,10 @@ func init() {
 
 //The resource type is what most of the application will focus on.
 type resource struct {
-	ID int64
+	ID int64 //db id
 
 	//display fields
-	Category         string
+	Category         string //Medical, Food, et cetera
 	OrganizationName string
 	Address          string
 	ZipCode          string
@@ -56,7 +56,7 @@ type resource struct {
 	PeopleServed     string
 	Description      string
 	PhoneNumber      string
-	Location         appengine.GeoPoint
+	Location         appengine.GeoPoint //lng lat
 
 	//audit fields
 	LastUpdatedTime time.Time `datastore:",noindex"`

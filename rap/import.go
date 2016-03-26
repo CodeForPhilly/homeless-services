@@ -12,8 +12,9 @@ import (
 	"errors"
 	"io"
 	"log"
-	"math/rand"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -68,7 +69,7 @@ func csvimport(w http.ResponseWriter, r *http.Request) *appError {
 	log.Println(handler.Filename)
 
 	cr := csv.NewReader(file)
-	var res []resource
+	var res []*resource
 	var keys []*datastore.Key
 
 	//at the moment we always insert a new item, this should be an insert or update based on OrganizationName
@@ -84,7 +85,7 @@ func csvimport(w http.ResponseWriter, r *http.Request) *appError {
 
 		//we may want IDs in there eventually
 		//_, err = strconv.ParseInt(rec[0], 2, 64)
-		res = append(res, resource{
+		tmp := &resource{
 			Category:         rec[1],
 			OrganizationName: rec[2],
 			Address:          rec[3],
@@ -98,11 +99,18 @@ func csvimport(w http.ResponseWriter, r *http.Request) *appError {
 			LastUpdatedBy:    u.Email,
 			LastUpdatedTime:  time.Now().UTC(),
 			IsActive:         true,
-			Location: appengine.GeoPoint{
-				Lat: 39.9522 - rand.Float64(),
-				Lng: -75.1635 - rand.Float64(),
-			},
-		})
+			Location:         appengine.GeoPoint{},
+		}
+
+		log.Printf("len slice check: %x, len rec LatLng check: %x, check for comma: %x", len(rec) > 11, len(rec[11]) > 0, strings.Index(rec[11], ",") != -1)
+
+		if len(rec) > 11 && len(rec[11]) > 0 && strings.Index(rec[11], ",") != -1 {
+			tmp.Location.Lng, _ = strconv.ParseFloat(strings.Split(rec[11], ",")[0], 64)
+			tmp.Location.Lat, _ = strconv.ParseFloat(strings.Split(rec[11], ",")[1], 64)
+			log.Println(tmp.Location)
+		}
+
+		res = append(res, tmp)
 
 		keys = append(keys, datastore.NewIncompleteKey(c, "Resource", nil))
 	}
