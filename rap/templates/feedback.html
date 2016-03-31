@@ -1,6 +1,7 @@
 {{define "title"}}Resource Awareness Map{{end}}
 {{define "styles"}}
-<link href="/static/css/map.css" rel="stylesheet" type="text/css"></link>
+<!--not a style I know, but we need this in the headd tag-->
+<script src='https://www.google.com/recaptcha/api.js'></script>
 {{end}}
 {{define "scripts"}}
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDNIBav6nqSKEx9iaCF_lkgtSR8HX8cpKI">
@@ -8,14 +9,14 @@
 <script type="text/javascript" src="/static/js/map.js"></script>
 {{end}}
 {{define "body"}}
-<form id="uploadform" name="feedbackform" action="/feedback" method="POST">
+<form id="uploadform" name="feedbackform" action="/feedback" method="POST" >
   <p>
     Tell us what went wrong
   </p>
   <p>
     <label for="topic">Topic</label>
     <br />
-    <select name="topic">
+    <select name="topic" required>
       <option value="missingInfo">Missing Information</option>
       <option value="incorrectInfo">Other Incorrect Information</option>
       <option value="wrongPhone">Wrong Phone</option>
@@ -25,12 +26,12 @@
     </select>
   </p>
   <p>
-    <label for="challenge">Challenges</label>
+    <label for="challenge" required>Challenges</label>
     <br/>
     <textarea name="challenges"></textarea>
   </p>
   <p>
-    <label for="recommendations">Recommendations</label>
+    <label for="recommendations" required>Recommendations</label>
     <br/>
     <textarea name="recommendations"></textarea>
   </p>
@@ -40,7 +41,7 @@
     <input type="email" name="email"></input>
   </p>
   <p>
-    TODO: CAPTCHA
+    <div class="g-recaptcha" data-sitekey="6Ld21hsTAAAAAFkh5MhVr2_sId_8PCRPRW7SWupM"></div>
   </p>
   <p>
     <input type="submit" value="Submit" />

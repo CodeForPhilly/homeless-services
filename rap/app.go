@@ -17,15 +17,23 @@ github.com/mjibson/appstats
 package rap
 
 import (
-	"net/http"
-	"time"
-
 	"appengine"
+	"net/http"
+	"os"
+	"time"
 )
 
 const basePath = "rap"
 
+var recaptchaServerKey, recaptchaBrowserKey, mapsBrowserKey, geocodingServerKey string
+
 func init() {
+	//load the api keys
+	recaptchaBrowserKey = os.Getenv("RECAPTCHA_SITE_KEY")
+	recaptchaServerKey = os.Getenv("RECAPTCHA_SECRET_KEY")
+	mapsBrowserKey = os.Getenv("MAPS_BROWSER_KEY")
+	geocodingServerKey = os.Getenv("GECODING_SERVER_KEY")
+
 	//basePath = "rapdemo"
 	fs := http.FileServer(http.Dir(basePath + "/static"))
 	http.Handle("/static/", http.StripPrefix("/static", fs))
