@@ -1,0 +1,32 @@
+{{define "layout"}}
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>{{template "title"}}</title>
+    <link rel="stylesheet" href="static/css/normalize.css"></link>
+    <link href="http://fonts.googleapis.com/css?family=Nunito:400,300" rel="stylesheet" type="text/css"></link>
+    <link rel="stylesheet" href="static/css/main.css">
+    {{template "styles"}}
+  </head>
+  <body>
+     <nav id="menu">
+      <img src="static/img/logo.gif" id="logo">
+      <h1>Resource Awareness</h1>
+
+      <div id="nav">
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="map.html">Map</a></li>
+          <li><a href="calendar.html">Calendar</a></li>
+	  <li><a href="feedback.html">Feedback</a></li>
+	  <!--remove this before deploying-->
+	  <!--<li><a href="import.html">Import</a></li>-->
+        </ul>
+      </div>
+    </nav>
+    {{template "body"}}
+    {{template "scripts"}}
+  </body>
+</html>
+{{end}}

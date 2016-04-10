@@ -1,0 +1,13 @@
+#map {
+    height: 600px; /*for full screen 100%;*/
+}
+
+#legend li{
+    margin: 1em;
+}
+
+#legend input{
+    display: none;
+}
+
+/*#legend li*/
