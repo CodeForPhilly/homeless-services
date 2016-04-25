@@ -50,7 +50,7 @@ func csvimport(w http.ResponseWriter, r *http.Request) *appError {
 
 	//some crappy security so that only a certain person can upload things
 	//we should probably have a users entity in datastore that we manage manually for this kinda thing
-	if u.Email != "ramjacvp@gmail.com" {
+	if u.Email != "test@example.com" {
 		return &appError{
 			errors.New("Illegal import attempted by " + u.Email),
 			"Your user is not allowed to import",

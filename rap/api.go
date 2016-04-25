@@ -4,13 +4,12 @@ import (
 	"appengine"
 	"appengine/datastore"
 	//"appengine/memcache"
-	//"fmt"
-	//"github.com/VividCortex/siesta"
 	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 type featurecollection struct {
@@ -64,55 +63,10 @@ func get_data(){
 
 func resources(w http.ResponseWriter, r *http.Request) *appError {
 	log.Println(r.Method)
-	c := appengine.NewContext(r)
+
 	switch r.Method {
 	case "GET":
-		res := make([]*resource, 0)
-		q := datastore.NewQuery("Resource").
-			Filter("IsActive =", true)
-
-		keys, err := q.GetAll(c, &res)
-
-		if err != nil {
-			return &appError{err, "Error querying database", http.StatusInternalServerError}
-		}
-
-		f := make([]*feature, 0)
-
-		//keys = keys[:1]
-		//res = res[:1]
-
-		for i, k := range keys {
-			res[i].ID = k.IntID()
-
-			f = append(f, &feature{
-				Geotype: "Feature",
-				Geometry: &geometry{
-					Geotype: "Point",
-					Coordinates: []float64{
-						res[i].Location.Lng,
-						res[i].Location.Lat,
-						0,
-					},
-					Id: strconv.FormatInt(res[i].ID, 10),
-				},
-				Properties: res[i],
-			})
-		}
-
-		gc := featurecollection{
-			"FeatureCollection",
-			f,
-		}
-
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		//err := json.NewEncoder(w).Encode(res)
-		tmp, err := json.Marshal(gc)
-		if err != nil {
-			return &appError{err, "Error creating response", http.StatusInternalServerError}
-		}
-		w.Write(tmp)
-		return nil
+		return getResources(w, r)
 	case "POST":
 		//auth, validate, add to datastore, invalidate cache
 		return &appError{
@@ -140,5 +94,115 @@ func resources(w http.ResponseWriter, r *http.Request) *appError {
 			"Unsupported HTTP method",
 			http.StatusMethodNotAllowed,
 		}
+	}
+}
+
+func getResources(w http.ResponseWriter, r *http.Request) *appError {
+	c := appengine.NewContext(r)
+	//get query from request
+	u := r.URL.Query()
+	top := strings.Trim(u.Get("top"), " ")
+	//qselect :=u.Get("select") //dunno if we'll support this... definitely not for demo
+	filter := strings.Trim(u.Get("filter"), " ")
+	//count := strings.Trim(u.Get("count"), " ")
+	//everything is text right now so this might not work as expected
+	orderby := strings.Trim(u.Get("orderby"), " ")
+	skip := strings.Trim(u.Get("skip"), " ")
+
+	//This text search will hit the description field... or we would except that datastore doesn't support that kinda thing
+	//you can get around that restriction by creating a field that is a unique list of all the strings and searching that. Of course we're not doing that right now.
+	//search := strings.Trim(u.Get("search"), " ")
+
+	//eventually allow for straight json as opposed to the geojson we normally serve - not supported yet :P
+	//format:=u.Get("format")
+
+	//build query against the db
+	q := datastore.NewQuery("Resource").Filter("IsActive =", true)
+
+	//loop through the filters
+	if len(filter) > 0 {
+
+	}
+
+	//handle orderby
+	if len(orderby) > 0 { //need to actually parse
+		//check to see if the string ends with desc
+		if strings.LastIndex(orderby, "desc") > len(orderby)-len(" desc") {
+			orderby = strings.Trim(orderby[:len(orderby)-len(" desc")], " ")
+			q = q.Order("-" + orderby)
+		}
+		q = q.Order(orderby)
+	}
+
+	//use the cursor to handle the top and skip
+	if len(skip) > 0 || len(top) > 0 {
+
+	}
+
+	//execute query against the db
+	res := make([]*resource, 0)
+
+	keys, err := q.GetAll(c, &res)
+
+	if err != nil {
+		return &appError{err, "Error querying database", http.StatusInternalServerError}
+	}
+
+	//make geojson from the db results
+	f := make([]*feature, 0)
+
+	//keys = keys[:1]
+	//res = res[:1]
+
+	for i, k := range keys {
+		res[i].ID = k.IntID()
+
+		f = append(f, &feature{
+			Geotype: "Feature",
+			Geometry: &geometry{
+				Geotype: "Point",
+				Coordinates: []float64{
+					res[i].Location.Lng,
+					res[i].Location.Lat,
+					0,
+				},
+				Id: strconv.FormatInt(res[i].ID, 10),
+			},
+			Properties: res[i],
+		})
+	}
+
+	gc := featurecollection{
+		"FeatureCollection",
+		f,
+	}
+
+	//return the json version
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	//err := json.NewEncoder(w).Encode(res)
+	tmp, err := json.Marshal(gc)
+	if err != nil {
+		return &appError{err, "Error creating response", http.StatusInternalServerError}
+	}
+	w.Write(tmp)
+	return nil
+}
+
+func odataLOEConverter(eo string) (string, error) {
+	switch strings.ToLower(strings.Trim(eo, " ")) {
+	case "eq":
+		return "=", nil
+		//case "ne": //not directly supported by datastore
+	//return "!="
+	case "gt":
+		return ">", nil
+	case "ge":
+		return ">=", nil
+	case "lt":
+		return "<", nil
+	case "le":
+		return "<=", nil
+	default:
+		return "", errors.New("Unknown or unsupported operator")
 	}
 }
