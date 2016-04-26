@@ -3,7 +3,7 @@ package rap
 import (
 	"appengine"
 	"appengine/datastore"
-	//"appengine/memcache"
+	"appengine/memcache"
 	"encoding/json"
 	"errors"
 	"log"
@@ -119,12 +119,12 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 	//build query against the db
 	q := datastore.NewQuery("Resource").Filter("IsActive =", true)
 
-	//loop through the filters
+	//loop through the filters - eventually, for now just handle one
 	if len(filter) > 0 {
-
+		//= q.Filter(
 	}
 
-	//handle orderby
+	//handle orderby - works for a single order, Caps matter
 	if len(orderby) > 0 { //need to actually parse
 		//check to see if the string ends with desc
 		if strings.LastIndex(orderby, "desc") > len(orderby)-len(" desc") {
@@ -134,14 +134,51 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 		q = q.Order(orderby)
 	}
 
-	//use the cursor to handle the top and skip
-	if len(skip) > 0 || len(top) > 0 {
+	res := make([]*resource, 0)
 
+	keys := make([]*datastore.Key, 0)
+
+	//based on https://cloud.google.com/appengine/docs/go/datastore/queries#Go_Sort_orders
+	//use the cursor to handle the top and skip
+	//need to put in the skip and take fit into cursors... so tired right now
+	if len(skip) > 0 || len(top) > 0 {
+		item, err := memcache.Get(c, "rap_cursor")
+		if err == nil {
+			cursor, err := datastore.DecodeCursor(string(item.Value))
+			if err == nil {
+				q = q.Start(cursor)
+			}
+		}
+
+		// Iterate over the results.
+		t := q.Run(c)
+		for {
+			var tmp resource
+			_, err := t.Next(&tmp)
+			if err == datastore.Done {
+				break
+			}
+			if err != nil {
+				return &appError{
+					err,
+					"Fetching next Resource",
+					http.StatusInternalServerError,
+				}
+			}
+
+			res = append(res, &tmp)
+		}
+
+		// Get updated cursor and store it for next time.
+		if cursor, err := t.Cursor(); err == nil {
+			memcache.Set(c, &memcache.Item{
+				Key:   "person_cursor",
+				Value: []byte(cursor.String()),
+			})
+		}
 	}
 
 	//execute query against the db
-	res := make([]*resource, 0)
-
 	keys, err := q.GetAll(c, &res)
 
 	if err != nil {
@@ -188,7 +225,7 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 	return nil
 }
 
-func odataLOEConverter(eo string) (string, error) {
+func odataLogicalOperatorConverter(eo string) (string, error) {
 	switch strings.ToLower(strings.Trim(eo, " ")) {
 	case "eq":
 		return "=", nil
