@@ -15,6 +15,10 @@ import (
 //it would be good for this function to pass a token to the page in case the page has a form (a lot of them will)
 //it would also be good to default to a page if none is given in the r.URL.Path
 func serveTemplate(w http.ResponseWriter, r *http.Request) *appError {
+	if r.URL.Path == "/" {
+		http.Redirect(w, r, "/index.html", 301)
+	}
+
 	c := appengine.NewContext(r)
 	c.Debugf("serving a non-static request")
 
