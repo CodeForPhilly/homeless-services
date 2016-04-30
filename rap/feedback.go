@@ -1,18 +1,17 @@
 package rap
 
 import (
-	"appengine"
-	"appengine/datastore"
 	"errors"
-	"log"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/log"
 	"net/http"
-	//"appengine/datastore"
 	"time"
 )
 
 func feedback(w http.ResponseWriter, r *http.Request) *appError {
 	c := appengine.NewContext(r)
-	c.Debugf("method: ", r.Method)
+	log.Infof(c, "method: ", r.Method)
 
 	if r.Method != "POST" {
 		return &appError{
@@ -31,7 +30,7 @@ func feedback(w http.ResponseWriter, r *http.Request) *appError {
 		RemoteIP: r.RemoteAddr,
 	}
 
-	c.Debugf("rc: ", rc)
+	log.Infof(c, "rc: ", rc)
 
 	//send to google
 
@@ -54,7 +53,7 @@ func feedback(w http.ResponseWriter, r *http.Request) *appError {
 
 	_, err := datastore.Put(c, key, f)
 	if err != nil {
-		log.Println(err.Error())
+		log.Debugf(c, err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return &appError{err, "Error submitting feedback", http.StatusInternalServerError}
 	}

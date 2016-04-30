@@ -4,8 +4,9 @@
 package rap
 
 import (
-	"appengine"
 	"errors"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/log"
 	"html/template"
 	"net/http"
 	"os"
@@ -20,7 +21,7 @@ func serveTemplate(w http.ResponseWriter, r *http.Request) *appError {
 	}
 
 	c := appengine.NewContext(r)
-	c.Debugf("serving a non-static request")
+	log.Infof(c, "serving a non-static request")
 
 	lp := path.Join(basePath+"/templates", "layout.html")
 	fp := path.Join(basePath+"/templates", r.URL.Path)

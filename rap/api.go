@@ -1,12 +1,15 @@
 package rap
 
 import (
-	"appengine"
-	"appengine/datastore"
-	"appengine/memcache"
 	"encoding/json"
 	"errors"
-	"log"
+	"fmt"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/memcache"
+	"hash/fnv"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -62,7 +65,7 @@ func get_data(){
 */
 
 func resources(w http.ResponseWriter, r *http.Request) *appError {
-	log.Println(r.Method)
+	//log.Infof(r.Method)
 
 	switch r.Method {
 	case "GET":
@@ -116,6 +119,18 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 	//eventually allow for straight json as opposed to the geojson we normally serve - not supported yet :P
 	//format:=u.Get("format")
 
+	//here we should check the cache to see if it holds an identical query so we can return that
+	h := fnv.New64a()
+	h.Write([]byte("rap_query" + top + filter + orderby + skip))
+	cacheKey := h.Sum64()
+
+	cv, err := memcache.Get(c, fmt.Sprint(cacheKey))
+	if err == nil {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Write(cv.Value)
+		return nil
+	}
+
 	//build query against the db
 	q := datastore.NewQuery("Resource").Filter("IsActive =", true)
 
@@ -132,57 +147,79 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 			q = q.Order("-" + orderby)
 		}
 		q = q.Order(orderby)
+	} else {
+		q = q.Order("Location")
 	}
 
 	res := make([]*resource, 0)
 
-	keys := make([]*datastore.Key, 0)
-
 	//based on https://cloud.google.com/appengine/docs/go/datastore/queries#Go_Sort_orders
 	//use the cursor to handle the top and skip
-	//need to put in the skip and take fit into cursors... so tired right now
-	if len(skip) > 0 || len(top) > 0 {
-		item, err := memcache.Get(c, "rap_cursor")
-		if err == nil {
-			cursor, err := datastore.DecodeCursor(string(item.Value))
-			if err == nil {
-				q = q.Start(cursor)
-			}
+	//In this case we don't care about the error because the int will then be zero. We'll proceed with the query with what worked.
+	//Alternatively we could check the errors and return a bad request accordingly
+	s, _ := strconv.Atoi(skip)
+	t, _ := strconv.Atoi(top)
+	if s > 0 || t > 0 {
+		if t == 0 {
+			t = math.MaxInt32
 		}
+		/*
+			log.Debugf(c, "We are %v and %v", s, t)
+			item, err := memcache.Get(c, "rap_resource_cursor")
+			if err == nil {
+				cursor, err := datastore.DecodeCursor(string(item.Value))
+				if err == nil {
+					q = q.Start(cursor)
+				}
+			}
+		*/
 
 		// Iterate over the results.
-		t := q.Run(c)
-		for {
-			var tmp resource
-			_, err := t.Next(&tmp)
+		iter := q.Run(c)
+		var tmp resource
+		var err error
+		for i := 0; s+t > i; i++ {
+			if s > i {
+				_, err = iter.Next(nil) //don't anything till we're done skipping
+			} else {
+				_, err = iter.Next(&tmp)
+			}
+
 			if err == datastore.Done {
 				break
 			}
 			if err != nil {
 				return &appError{
 					err,
-					"Fetching next Resource",
+					"Error in skip/top querying",
 					http.StatusInternalServerError,
 				}
 			}
 
-			res = append(res, &tmp)
+			//don't keep anything till we're done skipping
+			if i >= s {
+				res = append(res, &tmp)
+			}
 		}
 
-		// Get updated cursor and store it for next time.
-		if cursor, err := t.Cursor(); err == nil {
-			memcache.Set(c, &memcache.Item{
-				Key:   "person_cursor",
-				Value: []byte(cursor.String()),
-			})
+		log.Debugf(c, "res contains %v items", len(res))
+
+		/*
+			// Get updated cursor and store it for next time.
+			if cursor, err := iter.Cursor(); err == nil {
+				memcache.Set(c, &memcache.Item{
+					Key:   "rap_resource_cursor",
+					Value: []byte(cursor.String()),
+				})
+			}
+		*/
+	} else {
+		//execute query against the db
+		_, err := q.GetAll(c, &res)
+
+		if err != nil {
+			return &appError{err, "Error querying database", http.StatusInternalServerError}
 		}
-	}
-
-	//execute query against the db
-	keys, err := q.GetAll(c, &res)
-
-	if err != nil {
-		return &appError{err, "Error querying database", http.StatusInternalServerError}
 	}
 
 	//make geojson from the db results
@@ -191,21 +228,19 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 	//keys = keys[:1]
 	//res = res[:1]
 
-	for i, k := range keys {
-		res[i].ID = k.IntID()
-
+	for _, v := range res {
 		f = append(f, &feature{
 			Geotype: "Feature",
 			Geometry: &geometry{
 				Geotype: "Point",
 				Coordinates: []float64{
-					res[i].Location.Lng,
-					res[i].Location.Lat,
+					v.Location.Lng,
+					v.Location.Lat,
 					0,
 				},
-				Id: strconv.FormatInt(res[i].ID, 10),
+				//Id: strconv.FormatInt(v.ID, 10), //not needed
 			},
-			Properties: res[i],
+			Properties: v,
 		})
 	}
 
@@ -214,13 +249,19 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 		f,
 	}
 
-	//return the json version
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	//err := json.NewEncoder(w).Encode(res)
 	tmp, err := json.Marshal(gc)
 	if err != nil {
 		return &appError{err, "Error creating response", http.StatusInternalServerError}
 	}
+
+	//cache this result with it's query as the key
+	memcache.Set(c, &memcache.Item{
+		Key:   fmt.Sprint(cacheKey),
+		Value: tmp,
+	})
+
+	//return the json version
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Write(tmp)
 	return nil
 }

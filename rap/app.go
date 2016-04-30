@@ -17,7 +17,8 @@ github.com/mjibson/appstats
 package rap
 
 import (
-	"appengine"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/log"
 	"net/http"
 	"os"
 	"time"
@@ -89,7 +90,7 @@ type appHandler func(http.ResponseWriter, *http.Request) *appError
 func (fn appHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if e := fn(w, r); e != nil { // e is *appError, not os.Error.
 		c := appengine.NewContext(r)
-		c.Errorf("%v", e.Error)
+		log.Errorf(c, "%v", e.Error)
 		http.Error(w, e.Message, e.Code)
 	}
 }
