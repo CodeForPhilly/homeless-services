@@ -76,7 +76,7 @@
 				scale: 8,
 				fillOpacity: 1
 			    },
-			    title: res.properties.ID.toString()
+			    title: res.properties.OrganizationName
 			});
 
 			switch(res.properties.Category){

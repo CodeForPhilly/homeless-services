@@ -105,11 +105,11 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 	//get query from request
 	u := r.URL.Query()
 	top := strings.Trim(u.Get("top"), " ")
-	//qselect :=u.Get("select") //dunno if we'll support this... definitely not for demo
-	filter := strings.Trim(u.Get("filter"), " ")
-	//count := strings.Trim(u.Get("count"), " ")
+	//qselect :=u.Get("select") //dunno if we'll ever support this
+	//filter := strings.Trim(u.Get("filter"), " ")
+	//count := strings.Trim(u.Get("count"), " ") //not yet implemented, maybe once there is a web interface for editting data
 	//everything is text right now so this might not work as expected
-	orderby := strings.Trim(u.Get("orderby"), " ")
+	orderby := strings.ToLower(strings.Trim(u.Get("orderby"), " "))
 	skip := strings.Trim(u.Get("skip"), " ")
 
 	//This text search will hit the description field... or we would except that datastore doesn't support that kinda thing
@@ -121,7 +121,7 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 
 	//here we should check the cache to see if it holds an identical query so we can return that
 	h := fnv.New64a()
-	h.Write([]byte("rap_query" + top + filter + orderby + skip))
+	h.Write([]byte("rap_query" + top + orderby + skip))
 	cacheKey := h.Sum64()
 
 	cv, err := memcache.Get(c, fmt.Sprint(cacheKey))
@@ -132,14 +132,16 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 	}
 
 	//build query against the db
-	q := datastore.NewQuery("Resource").Filter("IsActive =", true)
+	q := datastore.NewQuery("Resource").Filter("isactive =", true)
 
-	//loop through the filters - eventually, for now just handle one
-	if len(filter) > 0 {
-		//= q.Filter(
-	}
+	//loop through the filters - not yet implemented - awaiting import improvements
+	/*
+		if len(filter) > 0 {
+			//= q.Filter(
+		}
+	*/
 
-	//handle orderby - works for a single order, Caps matter
+	//handle orderby - works for a single order
 	if len(orderby) > 0 { //need to actually parse
 		//check to see if the string ends with desc
 		if strings.LastIndex(orderby, "desc") > len(orderby)-len(" desc") {
@@ -148,7 +150,7 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 		}
 		q = q.Order(orderby)
 	} else {
-		q = q.Order("Location")
+		q = q.Order("organizationname")
 	}
 
 	res := make([]*resource, 0)
@@ -163,16 +165,6 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 		if t == 0 {
 			t = math.MaxInt32
 		}
-		/*
-			log.Debugf(c, "We are %v and %v", s, t)
-			item, err := memcache.Get(c, "rap_resource_cursor")
-			if err == nil {
-				cursor, err := datastore.DecodeCursor(string(item.Value))
-				if err == nil {
-					q = q.Start(cursor)
-				}
-			}
-		*/
 
 		// Iterate over the results.
 		iter := q.Run(c)
@@ -180,12 +172,13 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 		var err error
 		for i := 0; s+t > i; i++ {
 			if s > i {
-				_, err = iter.Next(nil) //don't anything till we're done skipping
+				_, err = iter.Next(nil) //don't pull anything till we're done skipping
 			} else {
 				_, err = iter.Next(&tmp)
 			}
 
 			if err == datastore.Done {
+				log.Debugf(c, "i %d, s %d, t %d", i, s, t)
 				break
 			}
 			if err != nil {
@@ -201,18 +194,6 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 				res = append(res, &tmp)
 			}
 		}
-
-		log.Debugf(c, "res contains %v items", len(res))
-
-		/*
-			// Get updated cursor and store it for next time.
-			if cursor, err := iter.Cursor(); err == nil {
-				memcache.Set(c, &memcache.Item{
-					Key:   "rap_resource_cursor",
-					Value: []byte(cursor.String()),
-				})
-			}
-		*/
 	} else {
 		//execute query against the db
 		_, err := q.GetAll(c, &res)
@@ -225,9 +206,7 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 	//make geojson from the db results
 	f := make([]*feature, 0)
 
-	//keys = keys[:1]
-	//res = res[:1]
-
+	log.Debugf(c, "res contains %v items", len(res))
 	for _, v := range res {
 		f = append(f, &feature{
 			Geotype: "Feature",

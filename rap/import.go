@@ -83,6 +83,11 @@ func csvimport(w http.ResponseWriter, r *http.Request) *appError {
 			return &appError{err, "Error reading file", http.StatusInternalServerError}
 		}
 
+		//if the first row has column headers then skip to the next one
+		if strings.ToLower(strings.Trim(rec[1], " ")) == "category" {
+			continue
+		}
+
 		//we may want IDs in there eventually
 		//_, err = strconv.ParseInt(rec[0], 2, 64)
 		tmp := &resource{
