@@ -106,7 +106,7 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 	u := r.URL.Query()
 	top := strings.Trim(u.Get("top"), " ")
 	//qselect :=u.Get("select") //dunno if we'll ever support this
-	//filter := strings.Trim(u.Get("filter"), " ")
+	filter := strings.Trim(u.Get("filter"), " ")
 	//count := strings.Trim(u.Get("count"), " ") //not yet implemented, maybe once there is a web interface for editting data
 	//everything is text right now so this might not work as expected
 	orderby := strings.ToLower(strings.Trim(u.Get("orderby"), " "))
@@ -121,7 +121,7 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 
 	//here we should check the cache to see if it holds an identical query so we can return that
 	h := fnv.New64a()
-	h.Write([]byte("rap_query" + top + orderby + skip))
+	h.Write([]byte("rap_query" + top + filter + orderby + skip))
 	cacheKey := h.Sum64()
 
 	cv, err := memcache.Get(c, fmt.Sprint(cacheKey))
@@ -134,19 +134,23 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 	//build query against the db
 	q := datastore.NewQuery("Resource").Filter("isactive =", true)
 
-	//loop through the filters - not yet implemented - awaiting import improvements
-	/*
-		if len(filter) > 0 {
-			//= q.Filter(
+	//loop through the filters
+	log.Debugf(c, "filter %s", filter)
+	if len(filter) > 0 {
+		if cn, eo, fv, err := filterParser(filter); err == nil {
+			log.Debugf(c, "cn %s, eo %s, fv %s", cn, eo, fv)
+			q = q.Filter(cn+" "+eo, fv)
+		} else {
+			log.Debugf(c, "filter parsing error %s", err)
 		}
-	*/
+	}
 
 	//handle orderby - works for a single order
 	if len(orderby) > 0 { //need to actually parse
 		//check to see if the string ends with desc
 		if strings.LastIndex(orderby, "desc") > len(orderby)-len(" desc") {
 			orderby = strings.Trim(orderby[:len(orderby)-len(" desc")], " ")
-			q = q.Order("-" + orderby)
+			orderby = "-" + orderby
 		}
 		q = q.Order(orderby)
 	} else {
@@ -245,7 +249,39 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 	return nil
 }
 
-func odataLogicalOperatorConverter(eo string) (string, error) {
+//I'd like to refactor this function and logicalOperatorConverter so that the logical operators are a single map used in both
+func filterParser(f string) (cn, eo, fv string, err error) {
+	odataOperators := []string{"eq", "gt", "ge", "lt", "le"}
+
+	//find the operator in this filter and use it to split the filter
+	for _, lo := range odataOperators {
+		if strings.Index(f, lo) == -1 {
+			continue
+		}
+
+		parts := strings.Split(f, lo)
+		if len(parts) != 2 {
+			err = errors.New("Incorrect number of filter parameters")
+			break
+		}
+
+		if eo, err = logicalOperatorConverter(lo); err == nil {
+			cn = strings.Trim(parts[0], " ")
+			fv = strings.Trim(parts[1], " ")
+			return
+		}
+
+		break
+	}
+
+	if err == nil {
+		err = errors.New("No supported logical operator was found")
+	}
+
+	return "", "", "", err
+}
+
+func logicalOperatorConverter(eo string) (string, error) {
 	switch strings.ToLower(strings.Trim(eo, " ")) {
 	case "eq":
 		return "=", nil
