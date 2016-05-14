@@ -23,7 +23,7 @@ type featurecollection struct {
 type feature struct {
 	Geotype    string    `json:"type"`
 	Geometry   *geometry `json:"geometry"`
-	Properties *resource `json:"properties"`
+	Properties *Resource `json:"properties"`
 }
 
 type geometry struct {
@@ -157,7 +157,7 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 		q = q.Order("organizationname")
 	}
 
-	res := make([]*resource, 0)
+	res := make([]*Resource, 0)
 
 	//based on https://cloud.google.com/appengine/docs/go/datastore/queries#Go_Sort_orders
 	//use the cursor to handle the top and skip
@@ -172,7 +172,7 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 
 		// Iterate over the results.
 		iter := q.Run(c)
-		var tmp resource
+		var tmp Resource
 		var err error
 		for i := 0; s+t > i; i++ {
 			if s > i {

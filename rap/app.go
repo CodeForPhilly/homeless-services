@@ -17,11 +17,12 @@ github.com/mjibson/appstats
 package rap
 
 import (
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/log"
 	"net/http"
 	"os"
 	"time"
+
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/log"
 )
 
 const basePath = "rap"
@@ -53,22 +54,26 @@ func init() {
 	http.Handle("/", appHandler(serveTemplate))
 }
 
-//The resource type is what most of the application will focus on.
-type resource struct {
+//For the fields that are being changed to improve their queryability, we may need to add string getters
+//But it should allow us to answer useful questions like "What's available right now?" and nice filtering options based on Category and People served
+
+
+//Resourse represents a single physical location that offers services.
+type Resource struct {
 	//ID int64 //db id
 
 	//display fields
-	Category         string             `datastore:"category"` //Medical, Food, et cetera
-	OrganizationName string             `datastore:"organizationname"`
-	Address          string             `datastore:"address"`
-	ZipCode          string             `datastore:"zipcode"`
-	Days             string             `datastore:"days"`
-	TimeOpen         string             `datastore:"timeopen"`
-	TimeClose        string             `datastore:"timeclose"`
-	PeopleServed     string             `datastore:"peopleserved"`
-	Description      string             `datastore:"description"`
-	PhoneNumber      string             `datastore:"phonenumber"`
-	Location         appengine.GeoPoint `datastore:"location"` //lng lat
+	Categories       []string                   `datastore:"categories"` //should this be an enumeration?
+	OrganizationName string                     `datastore:"organizationname"`
+	Address          string                     `datastore:"address"`
+	ZipCode          string                     `datastore:"zipcode"`
+	Days             []time.Weekday             `datastore:"days"`
+	TimeOpen         map[time.Weekday]time.Time `datastore:"timeopen"`
+	TimeClose        map[time.Weekday]time.Time `datastore:"timeclose"`
+	PeopleServed     []string                   `datastore:"peopleserved"` //should this be an enumeration?
+	Description      string                     `datastore:"description"`
+	PhoneNumber      string                     `datastore:"phonenumber"`
+	Location         appengine.GeoPoint         `datastore:"location"` //lng lat
 
 	//audit fields
 	LastUpdatedTime time.Time `datastore:"lastupdatedtime,noindex"`

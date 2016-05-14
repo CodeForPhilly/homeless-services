@@ -6,16 +6,17 @@ package rap
 import (
 	"encoding/csv"
 	"errors"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/log"
-	"google.golang.org/appengine/memcache"
-	"google.golang.org/appengine/user"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/memcache"
+	"google.golang.org/appengine/user"
 )
 
 //so... now we need to get the csv file into memory
@@ -69,7 +70,7 @@ func csvimport(w http.ResponseWriter, r *http.Request) *appError {
 	log.Infof(c, "New import file: %s ", handler.Filename)
 
 	cr := csv.NewReader(file)
-	var res []*resource
+	var res []*Resource
 	var keys []*datastore.Key
 
 	//at the moment we always insert a new item, this should be an insert or update based on OrganizationName
@@ -88,17 +89,24 @@ func csvimport(w http.ResponseWriter, r *http.Request) *appError {
 			continue
 		}
 
+		//Search for this Resource by OrganizationName
+		q := datastore.NewQuery("Resource").Filter("organizationname =", rec[2]).KeysOnly().Limit(2)
+		tmpKey := datastore.NewIncompleteKey(c, "Resource", nil)
+		if tmpKeys, err := q.GetAll(c, nil); len(tmpKeys) == 1 && err == nil {
+			tmpKey = tmpKeys[0]
+		}
+
 		//we may want IDs in there eventually
 		//_, err = strconv.ParseInt(rec[0], 2, 64)
-		tmp := &resource{
-			Category:         rec[1],
+		tmp := &Resource{
+			Categories:       getSliceFromString(rec[1]),
 			OrganizationName: rec[2],
 			Address:          rec[3],
 			ZipCode:          rec[4],
-			Days:             rec[5],
-			TimeOpen:         rec[6],
-			TimeClose:        rec[7],
-			PeopleServed:     rec[8],
+			Days:             getDays(rec[5]),
+			TimeOpen:         getTimes(rec[6]),
+			TimeClose:        getTimes(rec[7]),
+			PeopleServed:     getSliceFromString(rec[8]),
 			Description:      rec[9],
 			PhoneNumber:      rec[10],
 			LastUpdatedBy:    u.Email,
@@ -117,7 +125,7 @@ func csvimport(w http.ResponseWriter, r *http.Request) *appError {
 
 		res = append(res, tmp)
 
-		keys = append(keys, datastore.NewIncompleteKey(c, "Resource", nil))
+		keys = append(keys, tmpKey)
 	}
 
 	_, err = datastore.PutMulti(c, keys, res)
@@ -132,4 +140,49 @@ func csvimport(w http.ResponseWriter, r *http.Request) *appError {
 
 	http.Redirect(w, r, "/index.html", http.StatusFound)
 	return nil
+}
+
+func getSliceFromString(c string) []string {
+	return strings.Split(c, ",")
+}
+
+func getDays(c string) []time.Weekday {
+	daysStrings := strings.Split(c, ",")
+
+	var days []time.Weekday
+
+	for _, v := range daysStrings {
+		//parse a time from each day string
+		d, err := time.Parse("<layout...>", v)
+
+		if err == nil {
+			days = append(days, d.Weekday())
+		}
+	}
+
+	return days
+}
+
+//getTimes takes a string of days and times and returns a map. It expects a string formatted like "Wednesday 3:00pm,Thursday 4:30pm".
+func getTimes(c string) map[time.Weekday]time.Time {
+	timeStrings := strings.Split(c, ",")
+
+	times := make(map[time.Weekday]time.Time)
+
+	for _, v := range timeStrings {
+		//parse a time and day from each string
+		if strings.Index(v, " ") != 1 {
+			continue
+		}
+
+		d, errd := time.Parse("<layout...>", v)
+
+		t, errt := time.Parse(time.Kitchen, strings.Split(v, " ")[1])
+
+		if errd == nil && errt == nil {
+			times[d.Weekday()] = t
+		}
+	}
+
+	return times
 }
