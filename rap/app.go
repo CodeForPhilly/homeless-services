@@ -17,7 +17,8 @@ github.com/mjibson/appstats
 package rap
 
 import (
-	"appengine"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/log"
 	"net/http"
 	"os"
 	"time"
@@ -54,25 +55,25 @@ func init() {
 
 //The resource type is what most of the application will focus on.
 type resource struct {
-	ID int64 //db id
+	//ID int64 //db id
 
 	//display fields
-	Category         string //Medical, Food, et cetera
-	OrganizationName string
-	Address          string
-	ZipCode          string
-	Days             string
-	TimeOpen         string
-	TimeClose        string
-	PeopleServed     string
-	Description      string
-	PhoneNumber      string
-	Location         appengine.GeoPoint //lng lat
+	Category         string             `datastore:"category"` //Medical, Food, et cetera
+	OrganizationName string             `datastore:"organizationname"`
+	Address          string             `datastore:"address"`
+	ZipCode          string             `datastore:"zipcode"`
+	Days             string             `datastore:"days"`
+	TimeOpen         string             `datastore:"timeopen"`
+	TimeClose        string             `datastore:"timeclose"`
+	PeopleServed     string             `datastore:"peopleserved"`
+	Description      string             `datastore:"description"`
+	PhoneNumber      string             `datastore:"phonenumber"`
+	Location         appengine.GeoPoint `datastore:"location"` //lng lat
 
 	//audit fields
-	LastUpdatedTime time.Time `datastore:",noindex"`
-	LastUpdatedBy   string    `datastore:",noindex"`
-	IsActive        bool
+	LastUpdatedTime time.Time `datastore:"lastupdatedtime,noindex"`
+	LastUpdatedBy   string    `datastore:"lastupdatedby,noindex"`
+	IsActive        bool      `datastore:"isactive"`
 }
 
 //following the error pattern suggested in the Go Blog
@@ -89,7 +90,7 @@ type appHandler func(http.ResponseWriter, *http.Request) *appError
 func (fn appHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if e := fn(w, r); e != nil { // e is *appError, not os.Error.
 		c := appengine.NewContext(r)
-		c.Errorf("%v", e.Error)
+		log.Errorf(c, "%v", e.Error)
 		http.Error(w, e.Message, e.Code)
 	}
 }

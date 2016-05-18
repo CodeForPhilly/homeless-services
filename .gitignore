@@ -30,6 +30,8 @@ _testmain.go
 
 #emacs tmp files
 *~
+#*
+.#*
 
 #keep the api keys out of scm
 *.yaml

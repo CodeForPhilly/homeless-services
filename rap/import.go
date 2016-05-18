@@ -4,14 +4,14 @@
 package rap
 
 import (
-	"appengine"
-	"appengine/datastore"
-	"appengine/memcache"
-	"appengine/user"
 	"encoding/csv"
 	"errors"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/memcache"
+	"google.golang.org/appengine/user"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -26,7 +26,7 @@ import (
 //I need to implement a token on this form
 func csvimport(w http.ResponseWriter, r *http.Request) *appError {
 	c := appengine.NewContext(r)
-	c.Debugf("method: ", r.Method)
+	log.Infof(c, "method: ", r.Method)
 
 	if r.Method != "POST" {
 		return &appError{
@@ -50,7 +50,7 @@ func csvimport(w http.ResponseWriter, r *http.Request) *appError {
 
 	//some crappy security so that only a certain person can upload things
 	//we should probably have a users entity in datastore that we manage manually for this kinda thing
-	if u.Email != "ramjacvp@gmail.com" {
+	if u.Email != "test@example.com" {
 		return &appError{
 			errors.New("Illegal import attempted by " + u.Email),
 			"Your user is not allowed to import",
@@ -66,7 +66,7 @@ func csvimport(w http.ResponseWriter, r *http.Request) *appError {
 	}
 	defer file.Close()
 
-	log.Println(handler.Filename)
+	log.Infof(c, "New import file: %s ", handler.Filename)
 
 	cr := csv.NewReader(file)
 	var res []*resource
@@ -81,6 +81,11 @@ func csvimport(w http.ResponseWriter, r *http.Request) *appError {
 		}
 		if err != nil {
 			return &appError{err, "Error reading file", http.StatusInternalServerError}
+		}
+
+		//if the first row has column headers then skip to the next one
+		if strings.ToLower(strings.Trim(rec[1], " ")) == "category" {
+			continue
 		}
 
 		//we may want IDs in there eventually
@@ -102,12 +107,12 @@ func csvimport(w http.ResponseWriter, r *http.Request) *appError {
 			Location:         appengine.GeoPoint{},
 		}
 
-		log.Printf("len slice check: %x, len rec LatLng check: %x, check for comma: %x", len(rec) > 11, len(rec[11]) > 0, strings.Index(rec[11], ",") != -1)
+		//log.Infof(c, "len slice check: %x, len rec LatLng check: %x, check for comma: %x", len(rec) > 11, len(rec[11]) > 0, strings.Index(rec[11], ",") != -1)
 
 		if len(rec) > 11 && len(rec[11]) > 0 && strings.Index(rec[11], ",") != -1 {
 			tmp.Location.Lng, _ = strconv.ParseFloat(strings.Split(rec[11], ",")[0], 64)
 			tmp.Location.Lat, _ = strconv.ParseFloat(strings.Split(rec[11], ",")[1], 64)
-			log.Println(tmp.Location)
+			//log.Println(tmp.Location)
 		}
 
 		res = append(res, tmp)
@@ -117,7 +122,7 @@ func csvimport(w http.ResponseWriter, r *http.Request) *appError {
 
 	_, err = datastore.PutMulti(c, keys, res)
 	if err != nil {
-		log.Println(err.Error())
+		log.Debugf(c, err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return &appError{err, "Error updating database", http.StatusInternalServerError}
 	}
