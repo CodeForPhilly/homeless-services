@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestRapDemo(t *testing.T) {
+func TestPages(t *testing.T) {
 	_, done, err := aetest.NewContext()
 	//ctx, done, err := aetest.NewContext()
 	if err != nil {

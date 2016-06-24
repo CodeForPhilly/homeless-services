@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/log"
@@ -103,9 +104,8 @@ func csvimport(w http.ResponseWriter, r *http.Request) *appError {
 			OrganizationName: rec[2],
 			Address:          rec[3],
 			ZipCode:          rec[4],
-			Days:             getDays(rec[5]),
-			TimeOpen:         getTimes(rec[6]),
-			TimeClose:        getTimes(rec[7]),
+			Days:             GetDays(rec[5], c),
+			TimeOpenClose:    GetTimes(rec[6], c),
 			PeopleServed:     getSliceFromString(rec[8]),
 			Description:      rec[9],
 			PhoneNumber:      rec[10],
@@ -146,43 +146,199 @@ func getSliceFromString(c string) []string {
 	return strings.Split(c, ",")
 }
 
-func getDays(c string) []time.Weekday {
-	daysStrings := strings.Split(c, ",")
+func HasDay(d time.Weekday, days []time.Weekday) bool {
+	for _, t := range days {
+		if d == t {
+			return true
+		}
+	}
+	return false
+}
 
+func GetDays(d string, c context.Context) []time.Weekday {
+	//c := appengine.NewContext(r)
+
+	var span bool
 	var days []time.Weekday
 
-	for _, v := range daysStrings {
-		//parse a time from each day string
-		d, err := time.Parse("<layout...>", v)
+	log.Infof(c, "d: "+d)
+	for _, v := range strings.Split(d, " ") {
+		log.Infof(c, "v: "+v)
 
-		if err == nil {
-			days = append(days, d.Weekday())
+		//ignore these separators
+		if v == "&" || v == "," {
+			continue
+		}
+
+		//this signals the start of a span so we'll need to loop
+		if v == "-" || v == "through" {
+			span = true
+			continue
+		}
+
+		//if there is a trailing ":" or "," drop it
+		lastChar := v[len(v)-1:]
+		if lastChar == "," {
+			v = v[:len(v)-1]
+		}
+
+		if d, f := dayTranslations[v]; f == true {
+			//log.Infof(c, "do: %s", d)
+			if span {
+				//add a span of days, start the span with last day in the slice
+				startDay := days[len(days)-1]
+				//log.Infof(c, "days: %s", days)
+				//log.Infof(c, "startDay: %s", startDay)
+
+				//there is a bug here where we could add days we already have
+				days = append(days, getWeekdaySpan(startDay, d)...)
+			} else if !HasDay(d, days) {
+				days = append(days, d)
+			}
+		}
+	}
+
+	log.Infof(c, "days: %s", days)
+	return days
+}
+
+func getWeekdaySpan(s, e time.Weekday, days ...time.Weekday) []time.Weekday {
+	for _, w := range Weekdays {
+		if w != s {
+			continue
+		}
+		s++
+
+		if w == e {
+			break
+		}
+
+		if w+1 > time.Saturday {
+			getWeekdaySpan(time.Sunday, e, days...)
+		} else {
+			days = append(days, w+1)
 		}
 	}
 
 	return days
 }
 
-//getTimes takes a string of days and times and returns a map. It expects a string formatted like "Wednesday 3:00pm,Thursday 4:30pm".
-func getTimes(c string) map[time.Weekday]time.Time {
-	timeStrings := strings.Split(c, ",")
+//getTimes takes a string of days and times and returns a slice of dailyAvailability. It does not return errors. If parsing fails, an error is logged and an empty slice is returned.
+/*
+getTimes intends to be flexible with formats. "," ":" and "&" are ignored.
+"Mon 8:30AM - 9:00PM" -> Day: Monday, Open: 8:30AM, Close: 9PM
+"Sat - Sun 2:00pm - 5:00pm" -> [ { Day: Saturday, Open: 2PM, Close: 5PM }, { Day: Monday, Open: 2PM, Close: 9PM} ]
+"Tues & Wed: 9-3pm" -> [ { Day: Tuesday, Open: 9AM, Close: 3PM }, { Day: Wednesday, Open: 9AM, Close: 3PM} ]
 
-	times := make(map[time.Weekday]time.Time)
+Technically we could use a lexer/parser here but that's an overkill pipedream :(
+*/
+func GetTimes(s string, c context.Context) []dailyAvailability {
 
-	for _, v := range timeStrings {
-		//parse a time and day from each string
-		if strings.Index(v, " ") != 1 {
+	dts := strings.Split(s, ",")
+
+	var times []dailyAvailability
+
+	log.Infof(c, "s: "+s)
+	for _, dt := range dts {
+		var span bool
+		var days []time.Weekday
+		var open, close time.Time
+
+		log.Infof(c, "dt: "+dt)
+		//parse each day/span and the associated time span
+		for _, v := range strings.Split(dt, " ") {
+			log.Infof(c, "v: "+v)
+			//ignore these separators
+			if v == ":" || v == "&" || v == "," {
+				continue
+			}
+
+			//this signals the start of a span so we'll need to loop
+			if v == "-" || v == "through" {
+				span = true
+				continue
+			}
+
+			//if there is a trailing ":" or "," drop it
+			lastChar := v[len(v)-1:]
+			if lastChar == ":" || lastChar == "," {
+				v = v[:len(v)-1]
+			}
+
+			if d, err := time.Parse("Mon", v); err == nil {
+				if span {
+					//add a span of days, start the span with last day in the slice
+					startDay := days[len(days)-1]
+					for _, w := range Weekdays {
+						if w != startDay {
+							continue
+						}
+						days = append(days, d.Weekday())
+						if w == d.Weekday() {
+							break
+						}
+					}
+					continue
+				}
+				days = append(days, d.Weekday())
+			}
+
+			//I would like to handle multiple formats here... for now just kitchen
+			if t, err := time.Parse(time.Kitchen, v); err == nil {
+				if open == close {
+					open = t
+				} else {
+					close = t
+				}
+			}
+		}
+
+		//if we didn't get a valid time span then move on
+		if close.Before(open) || open.Equal(close) {
 			continue
 		}
 
-		d, errd := time.Parse("<layout...>", v)
-
-		t, errt := time.Parse(time.Kitchen, strings.Split(v, " ")[1])
-
-		if errd == nil && errt == nil {
-			times[d.Weekday()] = t
+		//add the resulting days to the output object
+		for _, v := range days {
+			times = append(
+				times,
+				dailyAvailability{
+					Day:   v,
+					Open:  open,
+					Close: close,
+				},
+			)
 		}
 	}
 
 	return times
 }
+
+var Weekdays = []time.Weekday{
+	time.Sunday,
+	time.Monday,
+	time.Tuesday,
+	time.Wednesday,
+	time.Thursday,
+	time.Friday,
+	time.Saturday,
+}
+
+var (
+	dayTranslations = map[string]time.Weekday{
+		"Sunday":    time.Sunday,
+		"Monday":    time.Monday,
+		"Tuesday":   time.Tuesday,
+		"Wednesday": time.Wednesday,
+		"Thursday":  time.Thursday,
+		"Friday":    time.Friday,
+		"Saturday":  time.Saturday,
+		"Sun":       time.Sunday,
+		"Mon":       time.Monday,
+		"Tue":       time.Tuesday,
+		"Wed":       time.Wednesday,
+		"Thu":       time.Thursday,
+		"Fri":       time.Friday,
+		"Sat":       time.Saturday,
+	}
+)

@@ -57,28 +57,31 @@ func init() {
 //For the fields that are being changed to improve their queryability, we may need to add string getters
 //But it should allow us to answer useful questions like "What's available right now?" and nice filtering options based on Category and People served
 
-
 //Resourse represents a single physical location that offers services.
 type Resource struct {
 	//ID int64 //db id
 
 	//display fields
-	Categories       []string                   `datastore:"categories"` //should this be an enumeration?
-	OrganizationName string                     `datastore:"organizationname"`
-	Address          string                     `datastore:"address"`
-	ZipCode          string                     `datastore:"zipcode"`
-	Days             []time.Weekday             `datastore:"days"`
-	TimeOpen         map[time.Weekday]time.Time `datastore:"timeopen"`
-	TimeClose        map[time.Weekday]time.Time `datastore:"timeclose"`
-	PeopleServed     []string                   `datastore:"peopleserved"` //should this be an enumeration?
-	Description      string                     `datastore:"description"`
-	PhoneNumber      string                     `datastore:"phonenumber"`
-	Location         appengine.GeoPoint         `datastore:"location"` //lng lat
+	Categories       []string            `datastore:"categories"` //should this be an enumeration?
+	OrganizationName string              `datastore:"organizationname"`
+	Address          string              `datastore:"address"`
+	ZipCode          string              `datastore:"zipcode"`
+	Days             []time.Weekday      `datastore:"days"`
+	TimeOpenClose    []dailyAvailability `datastore:"timeopenclose"`
+	PeopleServed     []string            `datastore:"peopleserved"` //should this be an enumeration?
+	Description      string              `datastore:"description"`
+	PhoneNumber      string              `datastore:"phonenumber"`
+	Location         appengine.GeoPoint  `datastore:"location"` //lng lat
 
 	//audit fields
 	LastUpdatedTime time.Time `datastore:"lastupdatedtime,noindex"`
 	LastUpdatedBy   string    `datastore:"lastupdatedby,noindex"`
 	IsActive        bool      `datastore:"isactive"`
+}
+
+type dailyAvailability struct {
+	Day         time.Weekday
+	Open, Close time.Time
 }
 
 //following the error pattern suggested in the Go Blog
