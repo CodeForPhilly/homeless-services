@@ -161,12 +161,12 @@ func GetDays(d string, c context.Context) []time.Weekday {
 	var span bool
 	var days []time.Weekday
 
-	log.Infof(c, "d: "+d)
+	//log.Infof(c, "d: "+d)
 	for _, v := range strings.Split(d, " ") {
-		log.Infof(c, "v: "+v)
+		//log.Infof(c, "v: "+v)
 
 		//ignore these separators
-		if v == "&" || v == "," {
+		if v == "&" || v == "," || len(v) == 0 {
 			continue
 		}
 
@@ -187,22 +187,29 @@ func GetDays(d string, c context.Context) []time.Weekday {
 			if span {
 				//add a span of days, start the span with last day in the slice
 				startDay := days[len(days)-1]
-				//log.Infof(c, "days: %s", days)
+				//log.Infof(c, "d: %s", d)
 				//log.Infof(c, "startDay: %s", startDay)
 
 				//there is a bug here where we could add days we already have
-				days = append(days, getWeekdaySpan(startDay, d)...)
+				wds := getWeekdaySpan(startDay, d)
+
+				//log.Infof(c, "wds: %s", wds)
+
+				days = append(days, wds...)
+
+				span = false
 			} else if !HasDay(d, days) {
 				days = append(days, d)
 			}
 		}
 	}
 
-	log.Infof(c, "days: %s", days)
+	//log.Infof(c, "days: %s", days)
 	return days
 }
 
 func getWeekdaySpan(s, e time.Weekday, days ...time.Weekday) []time.Weekday {
+	//I need to rework this...
 	for _, w := range Weekdays {
 		if w != s {
 			continue
@@ -213,7 +220,7 @@ func getWeekdaySpan(s, e time.Weekday, days ...time.Weekday) []time.Weekday {
 			break
 		}
 
-		if w+1 > time.Saturday {
+		if w+1 == time.Sunday {
 			getWeekdaySpan(time.Sunday, e, days...)
 		} else {
 			days = append(days, w+1)
@@ -233,7 +240,7 @@ getTimes intends to be flexible with formats. "," ":" and "&" are ignored.
 Technically we could use a lexer/parser here but that's an overkill pipedream :(
 */
 func GetTimes(s string, c context.Context) []dailyAvailability {
-
+	//this needs to be reworked to support multiple ranges of time
 	dts := strings.Split(s, ",")
 
 	var times []dailyAvailability
@@ -249,12 +256,12 @@ func GetTimes(s string, c context.Context) []dailyAvailability {
 		for _, v := range strings.Split(dt, " ") {
 			log.Infof(c, "v: "+v)
 			//ignore these separators
-			if v == ":" || v == "&" || v == "," {
+			if v == ":" || v == "&" || v == "," || len(v) == 0 {
 				continue
 			}
 
 			//this signals the start of a span so we'll need to loop
-			if v == "-" || v == "through" {
+			if v == "-" || v == "through" || v == "to" {
 				span = true
 				continue
 			}
@@ -265,23 +272,45 @@ func GetTimes(s string, c context.Context) []dailyAvailability {
 				v = v[:len(v)-1]
 			}
 
-			if d, err := time.Parse("Mon", v); err == nil {
+			if d, f := dayTranslations[v]; f == true {
+				//log.Infof(c, "do: %s", d)
 				if span {
 					//add a span of days, start the span with last day in the slice
 					startDay := days[len(days)-1]
-					for _, w := range Weekdays {
-						if w != startDay {
-							continue
-						}
-						days = append(days, d.Weekday())
-						if w == d.Weekday() {
-							break
-						}
-					}
-					continue
+					//log.Infof(c, "d: %s", d)
+					//log.Infof(c, "startDay: %s", startDay)
+
+					//there is a bug here where we could add days we already have
+					wds := getWeekdaySpan(startDay, d)
+
+					//log.Infof(c, "wds: %s", wds)
+
+					days = append(days, wds...)
+
+					span = false
+				} else if !HasDay(d, days) {
+					days = append(days, d)
 				}
-				days = append(days, d.Weekday())
 			}
+			/*
+				if d, err := time.Parse("Mon", v); err == nil {
+					if span {
+						//add a span of days, start the span with last day in the slice
+						startDay := days[len(days)-1]
+						for _, w := range Weekdays {
+							if w != startDay {
+								continue
+							}
+							days = append(days, d.Weekday())
+							if w == d.Weekday() {
+								break
+							}
+						}
+						continue
+					}
+					days = append(days, d.Weekday())
+				}
+			*/
 
 			//I would like to handle multiple formats here... for now just kitchen
 			if t, err := time.Parse(time.Kitchen, v); err == nil {
@@ -308,8 +337,11 @@ func GetTimes(s string, c context.Context) []dailyAvailability {
 					Close: close,
 				},
 			)
+			open = time.Time{}
 		}
 	}
+
+	log.Infof(c, "times: %s", times)
 
 	return times
 }
