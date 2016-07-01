@@ -25,7 +25,7 @@ var (
 	separatedTime  = "Mon, Tue, & Wed 8:00AM - 6:00PM"
 	spanOfTime     = "Thu - Sat 8:00AM - 6:00PM"
 	differentTimes = "Mon - Wed 8:00AM - 6:00PM Sat 1:00PM - 3:00PM"
-	complexTimes   = "Fri - Sun 8:00AM - 6:00PM Tue through Wed 9:00AM to 11:00am"
+	complexTimes   = "Fri - Sun 8:00AM - 6:00PM & Tue through Wed 9:00AM to 11:00am"
 )
 
 func testTimeParse(t *testing.T, c context.Context) {
