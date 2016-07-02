@@ -171,7 +171,7 @@ func GetDays(d string, c context.Context) []time.Weekday {
 		}
 
 		//this signals the start of a span so we'll need to loop
-		if v == "-" || v == "through" {
+		if v == "-" || v == "through" || v == "to" {
 			span = true
 			continue
 		}
@@ -240,104 +240,105 @@ getTimes intends to be flexible with formats. "," ":" and "&" are ignored.
 Technically we could use a lexer/parser here but that's an overkill pipedream :(
 */
 func GetTimes(s string, c context.Context) []dailyAvailability {
-	//this needs to be reworked to support multiple ranges of time
-	dts := strings.Split(s, ",")
-
+	//this works by accumulating Weekdays until a time span is encoutered
+	//then that time span is applied to those days
 	var times []dailyAvailability
+	var span bool
+	var days []time.Weekday
+	var open, close time.Time
 
 	log.Infof(c, "s: "+s)
-	for _, dt := range dts {
-		var span bool
-		var days []time.Weekday
-		var open, close time.Time
+	for _, dt := range strings.Split(strings.Replace(s, ",", " ", -1), " ") {
 
 		log.Infof(c, "dt: "+dt)
-		//parse each day/span and the associated time span
-		for _, v := range strings.Split(dt, " ") {
-			log.Infof(c, "v: "+v)
-			//ignore these separators
-			if v == ":" || v == "&" || v == "," || len(v) == 0 {
-				continue
-			}
 
-			//this signals the start of a span so we'll need to loop
-			if v == "-" || v == "through" || v == "to" {
-				span = true
-				continue
-			}
-
-			//if there is a trailing ":" or "," drop it
-			lastChar := v[len(v)-1:]
-			if lastChar == ":" || lastChar == "," {
-				v = v[:len(v)-1]
-			}
-
-			if d, f := dayTranslations[v]; f == true {
-				//log.Infof(c, "do: %s", d)
-				if span {
-					//add a span of days, start the span with last day in the slice
-					startDay := days[len(days)-1]
-					//log.Infof(c, "d: %s", d)
-					//log.Infof(c, "startDay: %s", startDay)
-
-					//there is a bug here where we could add days we already have
-					wds := getWeekdaySpan(startDay, d)
-
-					//log.Infof(c, "wds: %s", wds)
-
-					days = append(days, wds...)
-
-					span = false
-				} else if !HasDay(d, days) {
-					days = append(days, d)
-				}
-			}
-			/*
-				if d, err := time.Parse("Mon", v); err == nil {
-					if span {
-						//add a span of days, start the span with last day in the slice
-						startDay := days[len(days)-1]
-						for _, w := range Weekdays {
-							if w != startDay {
-								continue
-							}
-							days = append(days, d.Weekday())
-							if w == d.Weekday() {
-								break
-							}
-						}
-						continue
-					}
-					days = append(days, d.Weekday())
-				}
-			*/
-
-			//I would like to handle multiple formats here... for now just kitchen
-			if t, err := time.Parse(time.Kitchen, v); err == nil {
-				if open == close {
-					open = t
-				} else {
-					close = t
-				}
-			}
-		}
-
-		//if we didn't get a valid time span then move on
-		if close.Before(open) || open.Equal(close) {
+		//this signals the start of a span so we'll need to loop
+		if dt == "-" || dt == "through" || dt == "to" {
+			span = true
 			continue
 		}
 
-		//add the resulting days to the output object
-		for _, v := range days {
-			times = append(
-				times,
-				dailyAvailability{
-					Day:   v,
-					Open:  open,
-					Close: close,
-				},
-			)
+		//ignore these separators
+		if dt == ":" || dt == "&" || len(dt) <= 1 {
+			continue
+		}
+
+		//if there is a trailing ":" or "," drop it
+		lastChar := dt[len(dt)-1:]
+		if lastChar == ":" {
+			dt = dt[:len(dt)-1]
+		}
+
+		if d, f := dayTranslations[dt]; f == true {
+			log.Infof(c, "d: %s", d)
+			if span {
+				//add a span of days, start the span with last day in the slice
+				startDay := days[len(days)-1]
+				//log.Infof(c, "d: %s", d)
+				//log.Infof(c, "startDay: %s", startDay)
+
+				//there is a bug here where we could add days we already have
+				wds := getWeekdaySpan(startDay, d)
+
+				//log.Infof(c, "wds: %s", wds)
+
+				days = append(days, wds...)
+
+				span = false
+			} else if !HasDay(d, days) {
+				days = append(days, d)
+			}
+		}
+		/*
+			if d, err := time.Parse("Mon", v); err == nil {
+				if span {
+					//add a span of days, start the span with last day in the slice
+					startDay := days[len(days)-1]
+					for _, w := range Weekdays {
+						if w != startDay {
+							continue
+						}
+						days = append(days, d.Weekday())
+						if w == d.Weekday() {
+							break
+						}
+					}
+					continue
+				}
+				days = append(days, d.Weekday())
+			}
+		*/
+
+		//I would like to handle multiple formats here... for now just kitchen
+		if t, err := time.Parse(time.Kitchen, dt); err == nil {
+			log.Infof(c, "t: %s", t)
+			log.Infof(c, "span: %s", span)
+			if !span {
+				open = t
+				continue
+			}
+			close = t
+
+			//if we didn't get a valid time span then move on
+			if close.After(open) {
+				//add the resulting days to the output slice
+				for _, v := range days {
+					times = append(
+						times,
+						dailyAvailability{
+							Day:   v,
+							Open:  open,
+							Close: close,
+						},
+					)
+				}
+			}
+
+			//reset for the next set of days and times
 			open = time.Time{}
+			close = time.Time{}
+			days = days[:0]
+			span = false
 		}
 	}
 
@@ -346,17 +347,19 @@ func GetTimes(s string, c context.Context) []dailyAvailability {
 	return times
 }
 
-var Weekdays = []time.Weekday{
-	time.Sunday,
-	time.Monday,
-	time.Tuesday,
-	time.Wednesday,
-	time.Thursday,
-	time.Friday,
-	time.Saturday,
-}
-
 var (
+	//Weekdays is a slice of time.Weekday used for import.
+	Weekdays = []time.Weekday{
+		time.Sunday,
+		time.Monday,
+		time.Tuesday,
+		time.Wednesday,
+		time.Thursday,
+		time.Friday,
+		time.Saturday,
+	}
+
+	//dayTranslations maps strings to time.Weekday for parsing.
 	dayTranslations = map[string]time.Weekday{
 		"Sunday":    time.Sunday,
 		"Monday":    time.Monday,
