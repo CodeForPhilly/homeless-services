@@ -62,7 +62,9 @@ type Resource struct {
 	//ID int64 //db id
 
 	//display fields
-	Categories       []string            `datastore:"categories"` //should this be an enumeration?
+	//I think it might make sense for a single resource to fit multiple categories, but that'll require more work on the front end
+	//Categories       []string            `datastore:"categories"` //should this be an enumeration?
+	Category         string              `datastore:"category"` //should this be an enumeration?
 	OrganizationName string              `datastore:"organizationname"`
 	Address          string              `datastore:"address"`
 	ZipCode          string              `datastore:"zipcode"`

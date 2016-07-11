@@ -100,7 +100,7 @@ func csvimport(w http.ResponseWriter, r *http.Request) *appError {
 		//we may want IDs in there eventually
 		//_, err = strconv.ParseInt(rec[0], 2, 64)
 		tmp := &Resource{
-			Categories:       getSliceFromString(rec[1]),
+			Category:         rec[1], //getSliceFromString(rec[1]),
 			OrganizationName: rec[2],
 			Address:          rec[3],
 			ZipCode:          rec[4],
@@ -156,17 +156,19 @@ func HasDay(d time.Weekday, days []time.Weekday) bool {
 }
 
 func GetDays(d string, c context.Context) []time.Weekday {
-	//c := appengine.NewContext(r)
-
 	var span bool
 	var days []time.Weekday
 
-	//log.Infof(c, "d: "+d)
+	//humans have a tendancy to leave out spaces around some separators
+	d = strings.Replace(d, "&", " ", -1)
+	d = strings.Replace(d, ",", " ", -1)
+	d = strings.Replace(d, "-", " - ", -1)
+
 	for _, v := range strings.Split(d, " ") {
 		//log.Infof(c, "v: "+v)
 
-		//ignore these separators
-		if v == "&" || v == "," || len(v) == 0 {
+		//ignore empties
+		if len(v) == 0 {
 			continue
 		}
 
@@ -176,15 +178,9 @@ func GetDays(d string, c context.Context) []time.Weekday {
 			continue
 		}
 
-		//if there is a trailing ":" or "," drop it
-		lastChar := v[len(v)-1:]
-		if lastChar == "," {
-			v = v[:len(v)-1]
-		}
-
 		if d, f := dayTranslations[v]; f == true {
 			//log.Infof(c, "do: %s", d)
-			if span {
+			if span && len(days) > 0 {
 				//add a span of days, start the span with last day in the slice
 				startDay := days[len(days)-1]
 				//log.Infof(c, "d: %s", d)
@@ -204,6 +200,7 @@ func GetDays(d string, c context.Context) []time.Weekday {
 		}
 	}
 
+	//log.Infof(c, "days len: %d", len(days))
 	//log.Infof(c, "days: %s", days)
 	return days
 }
@@ -247,8 +244,14 @@ func GetTimes(s string, c context.Context) []dailyAvailability {
 	var days []time.Weekday
 	var open, close time.Time
 
-	log.Infof(c, "s: "+s)
-	for _, dt := range strings.Split(strings.Replace(s, ",", " ", -1), " ") {
+	//humans have a tendancy to leave out spaces around some separators
+	s = strings.Replace(s, "&", " ", -1)
+	s = strings.Replace(s, ",", " ", -1)
+	s = strings.Replace(s, ":", " ", -1)
+	s = strings.Replace(s, "-", " - ", -1)
+
+	log.Infof(c, "starting GetTimes for s: "+s)
+	for _, dt := range strings.Split(s, " ") {
 
 		log.Infof(c, "dt: "+dt)
 
@@ -259,14 +262,8 @@ func GetTimes(s string, c context.Context) []dailyAvailability {
 		}
 
 		//ignore these separators
-		if dt == ":" || dt == "&" || len(dt) <= 1 {
+		if len(dt) <= 1 {
 			continue
-		}
-
-		//if there is a trailing ":" or "," drop it
-		lastChar := dt[len(dt)-1:]
-		if lastChar == ":" {
-			dt = dt[:len(dt)-1]
 		}
 
 		if d, f := dayTranslations[dt]; f == true {
