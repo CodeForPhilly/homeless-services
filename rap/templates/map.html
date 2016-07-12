@@ -1,0 +1,50 @@
+{{define "title"}}Resource Awareness Map{{end}}
+{{define "styles"}}
+<link href="/static/css/map.css" rel="stylesheet" type="text/css"></link>
+{{end}}
+{{define "scripts"}}
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDNIBav6nqSKEx9iaCF_lkgtSR8HX8cpKI">
+    </script>
+<script type="text/javascript" src="/static/js/map.js"></script>
+{{end}}
+{{define "body"}}
+<form id="zipcode">
+  <!--Zipcode:<br>
+  <input type="text" name="search">-->
+  <div id="legend">
+    <ul>
+      <li>
+	<label class="btn">
+	  <input type="checkbox" id="MedicalType" value="medical" checked />
+	  <img src="static/img/redMarker.png" class="marker" />
+	  Medical
+	</label>
+      </li>
+      <li>
+	<label class="btn">
+	  <input type="checkbox" id="ShelterType" value="shelter" checked />
+	  <img src="static/img/blueMarker.png" class="marker" />
+	  Shelter
+	</label>
+      </li>
+      <li>
+	<label class="btn">
+	  <input type="checkbox" id="LegalType"  value="legal" checked />
+	  <img src="static/img/greenMarker.png" class="marker" />
+	  Legal
+	</label>
+      </li>
+      <li>
+	<label class="btn">
+	  <input type="checkbox" id="FoodType"  value="food" checked />
+	  <img src="static/img/yellowMarker.png" class="marker" />
+	  Food
+	</label>
+      </li>
+    </ul>
+  </div>
+</form>
+
+<!--<iframe src="https://www.google.com/maps/d/embed?mid=z5vye49gGXlg.kgJ3JyH9qPBo" width="800" height="600" allowfullscreen></iframe>-->
+<div id="map"></map>
+{{end}}
