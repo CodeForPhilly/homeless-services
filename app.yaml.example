@@ -1,0 +1,14 @@
+application: rap
+version: 2
+runtime: go
+api_version: go1
+
+handlers:
+- url: /.*
+  script: _go_app
+
+env_variables:
+  RECAPTCHA_SITE_KEY: ''
+  RECAPTCHA_SECRET_KEY: ''
+  MAPS_BROWSER_KEY: ''
+  GECODING_SERVER_KEY: ''
