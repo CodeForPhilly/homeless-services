@@ -1,12 +1,12 @@
 package rap_test
 
 import (
-	"google.golang.org/appengine/aetest"
-	"net/http"
-
 	"io/ioutil"
 	"log"
+	"net/http"
 	"testing"
+
+	"google.golang.org/appengine/aetest"
 )
 
 func TestPages(t *testing.T) {

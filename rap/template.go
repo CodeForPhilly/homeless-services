@@ -5,12 +5,13 @@ package rap
 
 import (
 	"errors"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/log"
 	"html/template"
 	"net/http"
 	"os"
 	"path"
+
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/log"
 )
 
 //it would be good for this function to pass a token to the page in case the page has a form (a lot of them will)

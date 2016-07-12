@@ -104,8 +104,8 @@ func csvimport(w http.ResponseWriter, r *http.Request) *appError {
 			OrganizationName: rec[2],
 			Address:          rec[3],
 			ZipCode:          rec[4],
-			Days:             GetDays(rec[5], c),
-			TimeOpenClose:    GetTimes(rec[6], c),
+			Days:             GetDays(rec[5:8]),
+			TimeOpenClose:    GetTimes(rec[5:8], c),
 			PeopleServed:     getSliceFromString(rec[8]),
 			Description:      rec[9],
 			PhoneNumber:      rec[10],
@@ -146,6 +146,7 @@ func getSliceFromString(c string) []string {
 	return strings.Split(c, ",")
 }
 
+// HasDay returns whether or not the given slice of days contains the provided day.
 func HasDay(d time.Weekday, days []time.Weekday) bool {
 	for _, t := range days {
 		if d == t {
@@ -155,54 +156,19 @@ func HasDay(d time.Weekday, days []time.Weekday) bool {
 	return false
 }
 
-func GetDays(d string, c context.Context) []time.Weekday {
-	var span bool
-	var days []time.Weekday
-
-	//humans have a tendancy to leave out spaces around some separators
-	d = strings.Replace(d, "&", " ", -1)
-	d = strings.Replace(d, ",", " ", -1)
-	d = strings.Replace(d, "-", " - ", -1)
-
-	for _, v := range strings.Split(d, " ") {
-		//log.Infof(c, "v: "+v)
-
-		//ignore empties
-		if len(v) == 0 {
-			continue
-		}
-
-		//this signals the start of a span so we'll need to loop
-		if v == "-" || v == "through" || v == "to" {
-			span = true
-			continue
-		}
-
-		if d, f := dayTranslations[v]; f == true {
-			//log.Infof(c, "do: %s", d)
-			if span && len(days) > 0 {
-				//add a span of days, start the span with last day in the slice
-				startDay := days[len(days)-1]
-				//log.Infof(c, "d: %s", d)
-				//log.Infof(c, "startDay: %s", startDay)
-
-				//there is a bug here where we could add days we already have
-				wds := getWeekdaySpan(startDay, d)
-
-				//log.Infof(c, "wds: %s", wds)
-
-				days = append(days, wds...)
-
-				span = false
-			} else if !HasDay(d, days) {
-				days = append(days, d)
-			}
-		}
+// GetDays returns the textual representation of the operating hours for a Resource from a slice of column from the imported csv.
+func GetDays(s []string) string {
+	//days + time span
+	switch {
+	case len(s) == 3 && len(s[1]) > 0 && len(s[2]) > 0:
+		return s[0] + ", " + s[1] + " - " + s[2]
+	case len(s) >= 2 && len(s[1]) > 0:
+		return s[0] + ", " + s[1]
+	case len(s) > 0:
+		return s[0]
+	default:
+		return ""
 	}
-
-	//log.Infof(c, "days len: %d", len(days))
-	//log.Infof(c, "days: %s", days)
-	return days
 }
 
 func getWeekdaySpan(s, e time.Weekday, days ...time.Weekday) []time.Weekday {
@@ -227,7 +193,7 @@ func getWeekdaySpan(s, e time.Weekday, days ...time.Weekday) []time.Weekday {
 	return days
 }
 
-//getTimes takes a string of days and times and returns a slice of dailyAvailability. It does not return errors. If parsing fails, an error is logged and an empty slice is returned.
+//GetTimes takes a string of days and times and returns a slice of dailyAvailability. It does not return errors. If parsing fails, an error is logged and an empty slice is returned.
 /*
 getTimes intends to be flexible with formats. "," ":" and "&" are ignored.
 "Mon 8:30AM - 9:00PM" -> Day: Monday, Open: 8:30AM, Close: 9PM
@@ -236,27 +202,35 @@ getTimes intends to be flexible with formats. "," ":" and "&" are ignored.
 
 Technically we could use a lexer/parser here but that's an overkill pipedream :(
 */
-func GetTimes(s string, c context.Context) []dailyAvailability {
-	//this works by accumulating Weekdays until a time span is encoutered
+func GetTimes(s []string, c context.Context) []dailyAvailability {
+	//this works by accumulating Weekdays from s[0] until a time span is encoutered
 	//then that time span is applied to those days
+	//due to inconsitent formatting in the data, that doesn't always work
+	//if a slice of weekdays is accumulated, but no time span is found, then Time open and close (s[1] & s[2]) are used
+
 	var times []dailyAvailability
 	var span bool
 	var days []time.Weekday
 	var open, close time.Time
 
-	//humans have a tendancy to leave out spaces around some separators
-	s = strings.Replace(s, "&", " ", -1)
-	s = strings.Replace(s, ",", " ", -1)
-	s = strings.Replace(s, ":", " ", -1)
-	s = strings.Replace(s, "-", " - ", -1)
+	if len(s) != 3 {
+		return times
+	}
 
-	log.Infof(c, "starting GetTimes for s: "+s)
-	for _, dt := range strings.Split(s, " ") {
+	daysStr := s[0]
+
+	//humans have a tendancy to leave out spaces around some separators
+	daysStr = strings.Replace(daysStr, "&", " ", -1)
+	daysStr = strings.Replace(daysStr, ",", " ", -1)
+	daysStr = strings.Replace(daysStr, "-", " - ", -1)
+
+	log.Infof(c, "starting GetTimes for s: "+daysStr)
+	for _, dt := range strings.Split(daysStr, " ") {
 
 		log.Infof(c, "dt: "+dt)
 
 		//this signals the start of a span so we'll need to loop
-		if dt == "-" || dt == "through" || dt == "to" {
+		if dt == "-" || dt == "–" || dt == "through" || dt == "to" {
 			span = true
 			continue
 		}
@@ -268,7 +242,7 @@ func GetTimes(s string, c context.Context) []dailyAvailability {
 
 		if d, f := dayTranslations[dt]; f == true {
 			log.Infof(c, "d: %s", d)
-			if span {
+			if span && len(days) > 0 {
 				//add a span of days, start the span with last day in the slice
 				startDay := days[len(days)-1]
 				//log.Infof(c, "d: %s", d)
@@ -285,26 +259,9 @@ func GetTimes(s string, c context.Context) []dailyAvailability {
 			} else if !HasDay(d, days) {
 				days = append(days, d)
 			}
+
+			continue
 		}
-		/*
-			if d, err := time.Parse("Mon", v); err == nil {
-				if span {
-					//add a span of days, start the span with last day in the slice
-					startDay := days[len(days)-1]
-					for _, w := range Weekdays {
-						if w != startDay {
-							continue
-						}
-						days = append(days, d.Weekday())
-						if w == d.Weekday() {
-							break
-						}
-					}
-					continue
-				}
-				days = append(days, d.Weekday())
-			}
-		*/
 
 		//I would like to handle multiple formats here... for now just kitchen
 		if t, err := time.Parse(time.Kitchen, dt); err == nil {
@@ -317,7 +274,7 @@ func GetTimes(s string, c context.Context) []dailyAvailability {
 			close = t
 
 			//if we didn't get a valid time span then move on
-			if close.After(open) {
+			if !open.IsZero() && !close.IsZero() && close.After(open) {
 				//add the resulting days to the output slice
 				for _, v := range days {
 					times = append(
@@ -336,6 +293,40 @@ func GetTimes(s string, c context.Context) []dailyAvailability {
 			close = time.Time{}
 			days = days[:0]
 			span = false
+		}
+	}
+
+	//No time span was applied to the days found
+	//24 hour services need to be handled better here...
+	if len(days) > 0 || s[1] == "24 hours" {
+		if t, err := time.Parse(time.Kitchen, s[1]); err == nil {
+			open = t
+		}
+
+		if t, err := time.Parse(time.Kitchen, s[2]); err == nil {
+			close = t
+		}
+
+		if s[1] == "24 hours" {
+			open, _ = time.Parse("15:04:05", "00:00:00")
+			close, _ = time.Parse("15:04:05", "23:59:59")
+			if len(days) == 0 {
+				days = Weekdays
+			}
+		}
+
+		if !open.IsZero() && !close.IsZero() && close.After(open) {
+			//add the resulting days to the output slice
+			for _, v := range days {
+				times = append(
+					times,
+					dailyAvailability{
+						Day:   v,
+						Open:  open,
+						Close: close,
+					},
+				)
+			}
 		}
 	}
 
@@ -368,6 +359,7 @@ var (
 		"Sun":       time.Sunday,
 		"Mon":       time.Monday,
 		"Tue":       time.Tuesday,
+		"Tues":      time.Tuesday,
 		"Wed":       time.Wednesday,
 		"Thu":       time.Thursday,
 		"Fri":       time.Friday,

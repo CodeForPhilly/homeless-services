@@ -4,15 +4,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/log"
-	"google.golang.org/appengine/memcache"
 	"hash/fnv"
 	"math"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/memcache"
 )
 
 type featurecollection struct {
@@ -29,7 +30,7 @@ type feature struct {
 type geometry struct {
 	Geotype     string    `json:"type"`
 	Coordinates []float64 `json:"coordinates"`
-	Id          string    `json:"id"`
+	ID          string    `json:"id"`
 }
 
 /* we need to format our resources like so
@@ -157,7 +158,7 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 		q = q.Order("organizationname")
 	}
 
-	res := make([]*Resource, 0)
+	var res []*Resource
 
 	//based on https://cloud.google.com/appengine/docs/go/datastore/queries#Go_Sort_orders
 	//use the cursor to handle the top and skip
@@ -208,7 +209,7 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 	}
 
 	//make geojson from the db results
-	f := make([]*feature, 0)
+	var f []*feature
 
 	log.Debugf(c, "res contains %v items", len(res))
 	for _, v := range res {

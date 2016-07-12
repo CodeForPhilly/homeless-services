@@ -25,7 +25,7 @@ import (
 	"google.golang.org/appengine/log"
 )
 
-const basePath = "rap"
+const basePath = "./"
 
 var recaptchaServerKey, recaptchaBrowserKey, mapsBrowserKey, geocodingServerKey string
 
@@ -68,7 +68,7 @@ type Resource struct {
 	OrganizationName string              `datastore:"organizationname"`
 	Address          string              `datastore:"address"`
 	ZipCode          string              `datastore:"zipcode"`
-	Days             []time.Weekday      `datastore:"days"`
+	Days             string              `datastore:"days"`
 	TimeOpenClose    []dailyAvailability `datastore:"timeopenclose"`
 	PeopleServed     []string            `datastore:"peopleserved"` //should this be an enumeration?
 	Description      string              `datastore:"description"`

@@ -1,11 +1,10 @@
 package rap
 
 import (
+	"testing"
+
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/aetest"
-
-	"testing"
-	"time"
 )
 
 func TestImport(t *testing.T) {
@@ -17,17 +16,22 @@ func TestImport(t *testing.T) {
 	defer done()
 
 	testTimeParse(t, c)
-	testDaysParse(t, c)
+	//testDaysParse(t, c)
 }
 
 var (
-	simpleTime     = "Mon Tue Wed 8:00AM - 6:00PM"
-	separatedTime  = "Mon, Tue, & Wed 8:00AM - 6:00PM"
-	spanOfTime     = "Thu - Sat 8:00AM - 6:00PM"
-	differentTimes = "Mon - Wed 8:00AM - 6:00PM Sat 1:00PM - 3:00PM"
-	complexTimes   = "Fri - Sun 8:00AM - 6:00PM & Tue through Wed 9:00AM to 11:00am"
+	simpleTime     = []string{"Mon Tue Wed 8:00AM - 6:00PM", "", ""}
+	separatedTime  = []string{"Mon, Tue, & Wed 8:00AM - 6:00PM", "", ""}
+	spanOfTime     = []string{"Thu - Sat 8:00AM - 6:00PM", "", ""}
+	differentTimes = []string{"Mon - Wed 8:00AM - 6:00PM Sat 1:00PM - 3:00PM", "", ""}
+	complexTimes   = []string{"Fri - Sun 8:00AM - 6:00PM & Tue through Wed 9:00AM to 11:00am", "", ""}
+	noSpan         = []string{"Mon, Tue, & Wed", "6:00PM", "10:00PM"}
+	noSpan24       = []string{"Mon, Tue, & Wed", "24 hours", ""}
+	badInput       = []string{"Fri - 8:00AM - 30:00PM & Tue through Wed 9:00PM to 11:00am", "WED", "9:00PM"}
 )
 
+//This should be checking the specific times and days instead of just the length
+//This might be a good place to try some table driven tests
 func testTimeParse(t *testing.T, c context.Context) {
 	r := GetTimes(simpleTime, c)
 	if len(r) != 3 {
@@ -53,43 +57,24 @@ func testTimeParse(t *testing.T, c context.Context) {
 	if len(r) != 5 {
 		t.Errorf("Failed complex times parse: %s", r)
 	}
-}
 
-var (
-	simpleDays     = "Mon Tue Wed"
-	separatedDays  = "Mon, Tue, & Wed"
-	spanOfDays     = "Thu - Sat"
-	longSpanOfDays = "Tue - Sat"
-	complexDays    = "Fri - Sun Wed"
-)
-
-func testDaysParse(t *testing.T, c context.Context) {
-	r := GetDays(simpleDays, c)
-	if len(r) != 3 || !hasDays(r, time.Monday, time.Tuesday, time.Wednesday) {
-		t.Errorf("Failed simple days parse: %s", r)
+	r = GetTimes(noSpan, c)
+	if len(r) != 3 {
+		t.Errorf("Failed no span parse: %s", r)
 	}
 
-	r = GetDays(separatedDays, c)
-	if len(r) != 3 || !hasDays(r, time.Monday, time.Tuesday, time.Wednesday) {
-		t.Errorf("Failed separated days parse: %s", r)
+	r = GetTimes(noSpan24, c)
+	if len(r) != 3 {
+		t.Errorf("Failed no span 24 parse: %s", r)
 	}
 
-	r = GetDays(spanOfDays, c)
-	if len(r) != 3 || !hasDays(r, time.Thursday, time.Friday, time.Saturday) {
-		t.Errorf("Failed span of days parse: %s", r)
-	}
-
-	r = GetDays(longSpanOfDays, c)
-	if len(r) != 5 || !hasDays(r, time.Tuesday, time.Wednesday, time.Thursday, time.Friday, time.Saturday) {
-		t.Errorf("Failed long span of days parse: %s", r)
-	}
-
-	r = GetDays(complexDays, c)
-	if len(r) != 4 || !hasDays(r, time.Friday, time.Saturday, time.Sunday, time.Wednesday) {
-		t.Errorf("Failed complex days parse: %s", r)
+	r = GetTimes(complexTimes, c)
+	if len(r) != 0 {
+		t.Errorf("Failed bad input parse: %s", r)
 	}
 }
 
+/*
 func hasDays(current []time.Weekday, potential ...time.Weekday) bool {
 	var found int
 
@@ -102,3 +87,4 @@ func hasDays(current []time.Weekday, potential ...time.Weekday) bool {
 	//if the potential slice has been emptied, then true
 	return len(potential) == found
 }
+*/
