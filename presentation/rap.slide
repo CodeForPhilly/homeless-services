@@ -1,0 +1,101 @@
+Resource Awareness Philly (RAP)
+A Code For Philly project in Google App Engine
+15:04 2 Jul 2016
+Tags: golang, app-engine
+
+Grady Fields
+Senior Consultant, CapTech
+gfields@captechconsulting.com
+https://github.com/ramjac
+
+* Introduction
+
+- Senior Consultant at CapTech (captechconsulting.com)
+- Web development in C# and Go
+- Civic involvement
+
+* About RAP
+
+Make a comprehensive data set of services for the homeless in Philly easy to use and publicly available.
+
+- Map of services
+- REST API
+
+: The goal of the project is to help people find the available resources by putting a list of those resources online in a form that can be used a 3rd party application or on the website.
+
+* Topics
+
+- Development and Deployment
+- Website
+- DataStore
+- REST API
+- Memcache
+- Testing
+
+* Development
+
+* Project Set Up - app.yaml
+
+.code example.app.yaml 
+
+https://cloud.google.com/appengine/docs/go/quickstart
+
+* Project Set Up - app.go
+
+.code basic.go
+
+https://cloud.google.com/appengine/docs/go/quickstart
+
+* Runing Locally and Deployment
+
+- goapp serve
+- goapp test
+- goapp deploy
+
+: Set up a project from the previous two example slides and run it with goapp serve. Make an edit to the .go file to demo the auto recompiling.
+
+* Website
+
+* Routing
+
+app.go - init() and the appHandler
+
+.code ../rap/app.go /^func init/,/^}/
+
+* Error Logging with the appHandler
+
+.code ../rap/app.go 
+
+: /^func (fn appHandler) ServeHTTP/,/^}/
+
+* Serving HTML Templates
+
+Mostly static webpages based on this article: http://www.alexedwards.net/blog/serving-static-sites-with-go
+
+.code ../rap/templates/layout.html
+
+: show how template.go puts the layout and requested page together.
+
+* DataStore
+
+* Importing Resources
+
+https://cloud.google.com/appengine/docs/go/datastore/creating-entities
+
+* Serving Resources in a REST API
+
+.code ../rap/api.go /^func resources/,/^}/
+
+* DataStore Development
+
+http://localhost:8000/datastore
+
+* Memcache
+
+* Minimizing DataStore Usage
+
+.code memcache.go
+
+* Memcache Development
+
+http://localhost:8000/memcache
