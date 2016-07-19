@@ -44,7 +44,7 @@ https://cloud.google.com/appengine/downloads#Google_App_Engine_SDK_for_Go
 
 ### Running the application
 
-Copy app.yaml.example to app.yaml
+Inside the rap directory, copy app.yaml.example to app.yaml
 
 DO NOT check in your app.yaml because it can contain API and other private keys that shouldn't be shared.
 
