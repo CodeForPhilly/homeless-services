@@ -16,6 +16,9 @@ import (
 	"google.golang.org/appengine/memcache"
 )
 
+//ErrUnknownOperator represents an error for unknown logical operators.
+var ErrUnknownOperator = errors.New("Unknown or unsupported operator")
+
 type featurecollection struct {
 	GeoType  string     `json:"type"`
 	Features []*feature `json:"features"`
@@ -175,6 +178,7 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 		iter := q.Run(c)
 		var tmp Resource
 		var err error
+		//There's a bug here that causes this to return the same resource top times
 		for i := 0; s+t > i; i++ {
 			if s > i {
 				_, err = iter.Next(nil) //don't pull anything till we're done skipping
@@ -297,6 +301,6 @@ func logicalOperatorConverter(eo string) (string, error) {
 	case "le":
 		return "<=", nil
 	default:
-		return "", errors.New("Unknown or unsupported operator")
+		return "", ErrUnknownOperator
 	}
 }

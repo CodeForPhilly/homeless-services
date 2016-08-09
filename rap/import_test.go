@@ -1,3 +1,6 @@
+//Import testing. Import is the most complicated part of the project.
+//It is going to need a lot of work to improve it bit by bit.
+//Test here should help prevent regressions as it import improves.
 package rap
 
 import (
