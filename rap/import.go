@@ -227,7 +227,7 @@ func GetTimes(s []string, c context.Context) []dailyAvailability {
 	log.Infof(c, "starting GetTimes for s: "+daysStr)
 	for _, dt := range strings.Split(daysStr, " ") {
 
-		log.Infof(c, "dt: "+dt)
+		//log.Infof(c, "dt: "+dt)
 
 		//this signals the start of a span so we'll need to loop
 		if dt == "-" || dt == "–" || dt == "through" || dt == "to" {
@@ -241,7 +241,7 @@ func GetTimes(s []string, c context.Context) []dailyAvailability {
 		}
 
 		if d, f := dayTranslations[dt]; f == true {
-			log.Infof(c, "d: %s", d)
+			//log.Infof(c, "d: %s", d)
 			if span && len(days) > 0 {
 				//add a span of days, start the span with last day in the slice
 				startDay := days[len(days)-1]
@@ -265,8 +265,8 @@ func GetTimes(s []string, c context.Context) []dailyAvailability {
 
 		//I would like to handle multiple formats here... for now just kitchen
 		if t, err := time.Parse(time.Kitchen, dt); err == nil {
-			log.Infof(c, "t: %s", t)
-			log.Infof(c, "span: %s", span)
+			//log.Infof(c, "t: %s", t)
+			//log.Infof(c, "span: %s", span)
 			if !span {
 				open = t
 				continue

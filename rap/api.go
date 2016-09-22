@@ -118,6 +118,7 @@ func getResources(w http.ResponseWriter, r *http.Request) *appError {
 
 	//This text search will hit the description field... or we would except that datastore doesn't support that kinda thing
 	//you can get around that restriction by creating a field that is a unique list of all the strings and searching that. Of course we're not doing that right now.
+	//https://cloud.google.com/appengine/articles/indexselection
 	//search := strings.Trim(u.Get("search"), " ")
 
 	//eventually allow for straight json as opposed to the geojson we normally serve - not supported yet :P
