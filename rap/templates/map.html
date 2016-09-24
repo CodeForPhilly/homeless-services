@@ -5,6 +5,7 @@
 {{define "scripts"}}
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDNIBav6nqSKEx9iaCF_lkgtSR8HX8cpKI">
     </script>
+<script type="text/javascript" src="/static/vendor/jquery/dist/jquery.min.js"></script>
 <script type="text/javascript" src="/static/js/map.js"></script>
 {{end}}
 {{define "body"}}
@@ -14,29 +15,29 @@
   <div id="legend">
     <ul>
       <li>
-	<label class="btn">
-	  <input type="checkbox" id="MedicalType" value="medical" checked />
+	<label class="btn" id="btnMedical">
+	  <input type="checkbox" id="cbMedical" value="medical" checked />
 	  <img src="static/img/redMarker.png" class="marker" />
 	  Medical
 	</label>
       </li>
       <li>
-	<label class="btn">
-	  <input type="checkbox" id="ShelterType" value="shelter" checked />
+	<label class="btn" id="btnShelter">
+	  <input type="checkbox" id="cbShelter" value="shelter" checked />
 	  <img src="static/img/blueMarker.png" class="marker" />
 	  Shelter
 	</label>
       </li>
       <li>
-	<label class="btn">
-	  <input type="checkbox" id="LegalType"  value="legal" checked />
+	<label class="btn" id="btnLegal">
+	  <input type="checkbox" id="cbLegal"  value="legal" checked />
 	  <img src="static/img/greenMarker.png" class="marker" />
 	  Legal
 	</label>
       </li>
       <li>
-	<label class="btn">
-	  <input type="checkbox" id="FoodType"  value="food" checked />
+	<label class="btn" id="btnFood">
+	  <input type="checkbox" id="cbFood"  value="food" checked />
 	  <img src="static/img/yellowMarker.png" class="marker" />
 	  Food
 	</label>

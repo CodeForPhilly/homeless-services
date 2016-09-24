@@ -35,3 +35,6 @@ _testmain.go
 
 #keep the api keys out of scm
 *.yaml
+
+#hide static vendor directory
+rap/static/vendor
